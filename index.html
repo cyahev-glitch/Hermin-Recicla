@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hermin Recicla · Dashboard Purina</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g1:#0C6442;--g2:#19D78E;--g3:#10885c;--g4:#e8f8f1;--g5:#d0f0e4;
+  --bg:#f5faf8;--card:#fff;--border:#d0e8dd;--text:#0a3a26;--muted:#5a8a75;
+  --warn-bg:#fffbeb;--warn-text:#92400e;--warn-border:#fcd34d;
+  --radius:12px;--font:'Nunito Sans',sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;}
+.app{max-width:980px;margin:0 auto;padding:16px;}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:12px 20px;background:var(--g1);border-radius:var(--radius);}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo img{width:40px;height:40px;object-fit:contain;}
+.logo-text{display:flex;flex-direction:column;line-height:1.1;}
+.logo-h{font-size:17px;font-weight:800;color:#fff;letter-spacing:1px;}
+.logo-s{font-size:10px;font-weight:600;color:var(--g2);letter-spacing:2px;}
+.tabs{display:flex;gap:6px;}
+.tab{padding:7px 16px;border-radius:8px;border:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;transition:all .2s;}
+.tab.active{background:var(--g2);color:var(--g1);}
+.tab:not(.active){background:rgba(255,255,255,.15);color:#fff;}
+.tab:not(.active):hover{background:rgba(255,255,255,.25);}
+.view{display:none;}.view.active{display:block;}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+.card h3{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;}
+.field{margin-bottom:11px;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;}
+.field input,.field select,.field textarea{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--text);background:#fff;outline:none;}
+.field input:focus,.field select:focus{border-color:var(--g3);}
+.field textarea{resize:none;}
+
+/* CAPTURA */
+.capture-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+.mat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
+.mat-row label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;}
+.mat-input{display:flex;align-items:center;gap:4px;}
+.mat-input input{padding:7px 8px;border:1.5px solid var(--border);border-radius:7px;font-family:var(--font);font-size:13px;color:var(--text);width:100%;}
+.mat-input span{font-size:11px;color:var(--muted);}
+.status-selector{display:flex;gap:8px;margin-bottom:12px;}
+.status-btn{flex:1;padding:9px;border-radius:9px;border:2px solid var(--border);background:#fff;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;transition:all .2s;text-align:center;}
+.status-btn.ok.selected{border-color:var(--g2);background:var(--g4);color:var(--g1);}
+.status-btn.warn.selected{border-color:var(--warn-border);background:var(--warn-bg);color:var(--warn-text);}
+.status-btn:not(.selected){color:var(--muted);}
+.incident-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.inc-tag{padding:5px 10px;border-radius:20px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600;color:var(--muted);transition:all .2s;}
+.inc-tag.selected{border-color:var(--warn-border);background:var(--warn-bg);color:var(--warn-text);}
+.btn-primary{width:100%;padding:11px;background:var(--g1);color:#fff;border:none;border-radius:9px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:background .2s;}
+.btn-primary:hover{background:var(--g3);}
+.btn-primary:disabled{background:var(--muted);cursor:not-allowed;}
+
+/* KPIs */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--g2);}
+.kpi.warn::before{background:var(--warn-border);}
+.kpi-label{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:5px;}
+.kpi-value{font-size:22px;font-weight:800;color:var(--g1);}
+.kpi-value.warn{color:var(--warn-text);}
+.kpi-unit{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* CHARTS */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+.chart-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;}
+.bar-chart{display:flex;flex-direction:column;gap:8px;}
+.bar-row{display:flex;align-items:center;gap:8px;}
+.bar-label{font-size:11px;color:var(--muted);width:65px;text-align:right;flex-shrink:0;}
+.bar-track{flex:1;height:14px;background:var(--g4);border-radius:7px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:7px;transition:width .5s;}
+.bar-val{font-size:11px;font-weight:700;color:var(--g1);width:55px;flex-shrink:0;}
+
+/* CONTROLS */
+.dash-controls{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.dash-controls select{padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;color:var(--text);background:#fff;}
+.dash-controls label{font-size:12px;color:var(--muted);font-weight:600;}
+.client-name{font-size:20px;font-weight:800;color:var(--g1);margin-right:auto;}
+
+/* TABLE */
+.tbl-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+.tbl-wrap{overflow-x:auto;}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{background:var(--g4);color:var(--g1);font-weight:700;padding:8px 10px;text-align:left;border-bottom:1.5px solid var(--border);white-space:nowrap;}
+.tbl td{padding:7px 10px;border-bottom:.5px solid var(--border);vertical-align:middle;}
+.tbl tbody tr:hover td{background:var(--g4);}
+
+/* PILLS */
+.pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;cursor:default;}
+.pill-ok{background:var(--g4);color:var(--g1);}
+.pill-warn{background:var(--warn-bg);color:var(--warn-text);cursor:pointer;border:1px solid var(--warn-border);}
+.pill-warn:hover{background:#fef3c7;}
+.tag-sm{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600;background:#fff3cd;color:#7c5c00;border:1px solid #f59e0b33;margin:1px 2px 1px 0;}
+
+/* EXPAND */
+.expand-row td{padding:0!important;border-bottom:.5px solid var(--border);}
+.expand-inner{overflow:hidden;max-height:0;transition:max-height .3s ease;background:var(--warn-bg);}
+.expand-inner.open{max-height:120px;}
+.expand-content{padding:10px 14px;}
+.expand-obs{font-size:12px;color:var(--warn-text);font-style:italic;margin-top:4px;}
+
+/* MISC */
+.empty{text-align:center;padding:24px;color:var(--muted);font-size:13px;}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--g1);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transition:opacity .3s;z-index:999;}
+.toast.show{opacity:1;}
+.loading{text-align:center;padding:30px;color:var(--muted);font-size:13px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">
+      <img src="https://drive.google.com/uc?export=view&id=1mCD1uqbcsB95dswaiulc9wQ9ZnaNucPS" alt="Hermin Recicla" onerror="this.style.display='none'">
+      <div class="logo-text">
+        <span class="logo-h">HERMIN</span>
+        <span class="logo-s">RECICLA</span>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchView('dashboard')">Dashboard</button>
+      <button class="tab" onclick="switchView('capture')">Registrar</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="view active" id="view-dashboard">
+    <div class="dash-controls">
+      <span class="client-name">Purina · Programa de reciclaje</span>
+      <label>Mes:</label>
+      <select id="sel-month" onchange="renderDash()">
+        <option value="all">Todos los meses</option>
+        <option value="Feb">Febrero 2026</option>
+        <option value="Mar">Marzo 2026</option>
+        <option value="Apr">Abril 2026</option>
+        <option value="May">Mayo 2026</option>
+      </select>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Total recolectado</div><div class="kpi-value" id="k-total">—</div><div class="kpi-unit">kg acumulados</div></div>
+      <div class="kpi"><div class="kpi-label">Costales / Empaques</div><div class="kpi-value" id="k-emp">—</div><div class="kpi-unit">kg</div></div>
+      <div class="kpi"><div class="kpi-label">Sobres</div><div class="kpi-value" id="k-sob">—</div><div class="kpi-unit">kg</div></div>
+      <div class="kpi warn"><div class="kpi-label">⚠️ Atención requerida</div><div class="kpi-value warn" id="k-warn">—</div><div class="kpi-unit">visitas con incidencia</div></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card"><div class="chart-title">Por material</div><div class="bar-chart" id="bar-mat"></div></div>
+      <div class="chart-card"><div class="chart-title">Por mes</div><div class="bar-chart" id="bar-month"></div></div>
+    </div>
+    <div class="tbl-card">
+      <div class="chart-title" style="margin-bottom:12px">Visitas por contenedor</div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>Contenedor</th><th>Fecha</th><th>Costales kg</th><th>Sobres kg</th><th>Latas kg</th><th>Total kg</th><th>Estado</th></tr></thead>
+          <tbody id="visits-body"><tr><td colspan="7" class="loading">Cargando datos...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAPTURA -->
+  <div class="view" id="view-capture">
+    <div class="capture-grid">
+      <div class="card">
+        <h3>Datos de la recolección</h3>
+        <div class="field"><label>Mes</label>
+          <select id="f-month">
+            <option value="Feb">Febrero 2026</option><option value="Mar">Marzo 2026</option>
+            <option value="Apr">Abril 2026</option><option value="May" selected>Mayo 2026</option>
+          </select>
+        </div>
+        <div class="field"><label>Fecha</label><input type="date" id="f-date"></div>
+        <div class="field"><label>Contenedor / Punto</label>
+          <input type="text" id="f-container" placeholder="Ej. Petco Fortuna" list="cont-list">
+          <datalist id="cont-list"></datalist>
+        </div>
+        <div class="field"><label>Observaciones (opcional)</label>
+          <textarea id="f-obs" rows="2" placeholder="Notas de la visita..."></textarea>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Materiales (kg)</h3>
+        <div class="mat-grid">
+          <div class="mat-row"><label>Costales / Empaques</label><div class="mat-input"><input type="number" id="m-emp" placeholder="0.00" min="0" step="0.01"><span>kg</span></div></div>
+          <div class="mat-row"><label>Sobres</label><div class="mat-input"><input type="number" id="m-sob" placeholder="0.00" min="0" step="0.01"><span>kg</span></div></div>
+          <div class="mat-row"><label>Latas</label><div class="mat-input"><input type="number" id="m-lat" placeholder="0.00" min="0" step="0.01"><span>kg</span></div></div>
+        </div>
+        <h3 style="margin-bottom:8px">Estado de la visita</h3>
+        <div class="status-selector">
+          <button class="status-btn ok selected" id="btn-ok" onclick="selectStatus('ok')">✅ Sin novedad</button>
+          <button class="status-btn warn" id="btn-warn" onclick="selectStatus('warn')">⚠️ Atención requerida</button>
+        </div>
+        <div id="inc-tags-wrap" style="display:none">
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;">Tipo de incidencia:</div>
+          <div class="incident-tags">
+            <button class="inc-tag" onclick="toggleTag(this)" data-tag="Quieren retirar contenedor">Quieren retirar contenedor</button>
+            <button class="inc-tag" onclick="toggleTag(this)" data-tag="Se llenó / residuos fuera">Se llenó / residuos fuera</button>
+            <button class="inc-tag" onclick="toggleTag(this)" data-tag="Contenedor dañado">Contenedor dañado</button>
+            <button class="inc-tag" onclick="toggleTag(this)" data-tag="Piden más frecuencia">Piden más frecuencia</button>
+            <button class="inc-tag" onclick="toggleTag(this)" data-tag="Plagas / higiene">Plagas / higiene</button>
+          </div>
+        </div>
+        <button class="btn-primary" id="btn-save" onclick="saveRecord()">+ Registrar recolección</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// CONFIGURACIÓN SUPABASE — reemplaza con tus credenciales
+// ============================================================
+const SUPABASE_URL = 'https://aqfvendludjzwjiqjqmp.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_AMqrr5Wz32VyodI0J2ezuA_ATmSfI6x';
+// ============================================================
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const MONTH_NAMES = {Feb:'Febrero 2026',Mar:'Marzo 2026',Apr:'Abril 2026',May:'Mayo 2026'};
+let records = [];
+let currentStatus = 'ok';
+let openRow = null;
+
+// Fecha de hoy
+document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+
+// ---- SUPABASE ----
+async function loadRecords() {
+  const { data, error } = await db.from('recolecciones').select('*').order('date', { ascending: true });
+  if (error) { console.error(error); return; }
+  records = data || [];
+  renderDash();
+  populateContainerList();
+}
+
+async function saveRecord() {
+  const emp = parseFloat(document.getElementById('m-emp').value) || 0;
+  const sob = parseFloat(document.getElementById('m-sob').value) || 0;
+  const lat = parseFloat(document.getElementById('m-lat').value) || 0;
+  if (emp + sob + lat === 0) { showToast('Agrega al menos un peso ⚠️'); return; }
+  const tags = [...document.querySelectorAll('.inc-tag.selected')].map(e => e.dataset.tag);
+  const record = {
+    month: document.getElementById('f-month').value,
+    date: document.getElementById('f-date').value,
+    loc: document.getElementById('f-container').value || 'Sin nombre',
+    emp, sob, lat,
+    obs: document.getElementById('f-obs').value,
+    status: currentStatus,
+    tags: tags
+  };
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  const { error } = await db.from('recolecciones').insert([record]);
+  btn.disabled = false; btn.textContent = '+ Registrar recolección';
+  if (error) { showToast('Error al guardar ❌'); console.error(error); return; }
+  showToast('Recolección guardada ✅');
+  ['m-emp','m-sob','m-lat'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-obs').value = '';
+  document.querySelectorAll('.inc-tag').forEach(t => t.classList.remove('selected'));
+  selectStatus('ok');
+  await loadRecords();
+}
+
+// ---- UI ----
+function switchView(v) {
+  document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  document.querySelectorAll('.tab')[v === 'dashboard' ? 0 : 1].classList.add('active');
+  if (v === 'dashboard') renderDash();
+}
+
+function selectStatus(s) {
+  currentStatus = s;
+  document.getElementById('btn-ok').classList.toggle('selected', s === 'ok');
+  document.getElementById('btn-warn').classList.toggle('selected', s === 'warn');
+  document.getElementById('inc-tags-wrap').style.display = s === 'warn' ? 'block' : 'none';
+}
+
+function toggleTag(el) { el.classList.toggle('selected'); }
+
+function fmtDate(d) {
+  const p = d.split('-'); return `${p[2]}/${p[1]}/${p[0].substring(2)}`;
+}
+
+function populateContainerList() {
+  const locs = [...new Set(records.map(r => r.loc))].sort();
+  document.getElementById('cont-list').innerHTML = locs.map(l => `<option value="${l}">`).join('');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function toggleExpand(id) {
+  const inner = document.getElementById('inner-' + id);
+  if (!inner) return;
+  if (openRow && openRow !== id) {
+    const prev = document.getElementById('inner-' + openRow);
+    if (prev) prev.classList.remove('open');
+  }
+  inner.classList.toggle('open');
+  openRow = inner.classList.contains('open') ? id : null;
+}
+
+function getFiltered() {
+  const m = document.getElementById('sel-month').value;
+  return m === 'all' ? records : records.filter(r => r.month === m);
+}
+
+function renderDash() {
+  const data = getFiltered();
+  if (!data.length) {
+    document.getElementById('k-total').textContent = '0';
+    document.getElementById('k-emp').textContent = '0';
+    document.getElementById('k-sob').textContent = '0';
+    document.getElementById('k-warn').textContent = '0';
+    document.getElementById('visits-body').innerHTML = '<tr><td colspan="7" class="empty">Sin datos para este periodo</td></tr>';
+    return;
+  }
+  const emp = data.reduce((a,r) => a + (r.emp||0), 0);
+  const sob = data.reduce((a,r) => a + (r.sob||0), 0);
+  const lat = data.reduce((a,r) => a + (r.lat||0), 0);
+  document.getElementById('k-total').textContent = (emp+sob+lat).toFixed(2);
+  document.getElementById('k-emp').textContent = emp.toFixed(2);
+  document.getElementById('k-sob').textContent = sob.toFixed(2);
+  document.getElementById('k-warn').textContent = data.filter(r => r.status === 'warn').length;
+
+  const maxMat = Math.max(emp,sob,lat) || 1;
+  document.getElementById('bar-mat').innerHTML = [
+    {l:'Costales',v:emp,c:'#0C6442'},
+    {l:'Sobres',v:sob,c:'#19D78E'},
+    {l:'Latas',v:lat,c:'#9aefd5'}
+  ].map(m => `<div class="bar-row"><span class="bar-label">${m.l}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(m.v/maxMat*100)}%;background:${m.c}"></div></div><span class="bar-val">${m.v.toFixed(1)} kg</span></div>`).join('');
+
+  const mts = ['Feb','Mar','Apr','May'];
+  const mT = mts.map(m => ({m, v: records.filter(r => r.month === m).reduce((a,r) => a+(r.emp||0)+(r.sob||0)+(r.lat||0), 0)}));
+  const maxM = Math.max(...mT.map(x => x.v)) || 1;
+  document.getElementById('bar-month').innerHTML = mT.map(({m,v}) =>
+    `<div class="bar-row"><span class="bar-label" style="width:65px">${MONTH_NAMES[m].split(' ')[0]}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxM*100)}%;background:var(--g3)"></div></div><span class="bar-val">${v.toFixed(1)} kg</span></div>`
+  ).join('');
+
+  const sorted = [...data].sort((a,b) => a.loc.localeCompare(b.loc) || a.date.localeCompare(b.date));
+  let html = '';
+  sorted.forEach((r,i) => {
+    const total = ((r.emp||0)+(r.sob||0)+(r.lat||0)).toFixed(2);
+    const statusCell = r.status === 'warn'
+      ? `<span class="pill pill-warn" onclick="toggleExpand(${i})" title="Clic para ver detalle">⚠️ Atención ▾</span>`
+      : `<span class="pill pill-ok">✅ Sin novedad</span>`;
+    html += `<tr><td style="font-weight:600">${r.loc}</td><td style="color:var(--muted)">${fmtDate(r.date)}</td><td>${r.emp>0?r.emp.toFixed(2):'—'}</td><td>${r.sob>0?r.sob.toFixed(2):'—'}</td><td>${r.lat>0?r.lat.toFixed(2):'—'}</td><td style="font-weight:700;color:var(--g1)">${total}</td><td>${statusCell}</td></tr>`;
+    if (r.status === 'warn') {
+      const tagArr = Array.isArray(r.tags) ? r.tags : [];
+      const tags = tagArr.map(t => `<span class="tag-sm">${t}</span>`).join('');
+      html += `<tr class="expand-row"><td colspan="7"><div class="expand-inner" id="inner-${i}"><div class="expand-content"><div>${tags}</div><div class="expand-obs">${r.obs||'Sin observación registrada.'}</div></div></div></td></tr>`;
+    }
+  });
+  document.getElementById('visits-body').innerHTML = html || '<tr><td colspan="7" class="empty">Sin registros</td></tr>';
+}
+
+// Iniciar
+loadRecords();
+</script>
+</body>
+</html>
