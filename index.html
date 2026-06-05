@@ -630,6 +630,8 @@ function resetDriveField() {
   setDriveMode('link');
   document.getElementById('f-drive').value = '';
 }
+
+function selectStatus(s) {
   currentStatus = s;
   document.getElementById('btn-ok').classList.toggle('selected', s === 'ok');
   document.getElementById('btn-warn').classList.toggle('selected', s === 'warn');
