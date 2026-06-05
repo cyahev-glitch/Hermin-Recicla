@@ -581,6 +581,7 @@ async function deleteRecord(id) {
   if (error) { showToast('Error al eliminar ❌'); return; }
   showToast('Registro eliminado ✅');
   await loadRecords();
+  renderDash();
 }
 
 async function updateRecord() {
@@ -601,6 +602,8 @@ async function updateRecord() {
   showToast('Registro actualizado ✅');
   closeModal();
   await loadRecords();
+  // Forzar render del dashboard para que los cambios se vean de inmediato
+  renderDash();
 }
 
 // ---- UI ----
