@@ -530,6 +530,7 @@ function openEditModal(r) {
   document.getElementById('edit-sob').value = r.sob;
   document.getElementById('edit-lat').value = r.lat;
   document.getElementById('edit-obs').value = r.obs || '';
+  document.getElementById('edit-drive').value = r.drive_url || '';
   document.getElementById('edit-status').value = r.status;
   document.getElementById('modal-edit').classList.add('open');
 }
@@ -640,29 +641,62 @@ function renderPunto() {
   }
   document.getElementById('chart-punto').style.display = 'block';
 
-  puntoChart = new Chart(document.getElementById('chart-punto'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Costales / Empaques', data: empData, backgroundColor: '#0C6442', borderRadius: 4 },
-        { label: 'Sobres', data: sobData, backgroundColor: '#19D78E', borderRadius: 4 },
-        { label: 'Latas', data: latData, backgroundColor: '#9aefd5', borderRadius: 4 }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      plugins: {
-        legend: { position: 'top', labels: { font: { family: "'Nunito Sans', sans-serif", size: 11 }, color: '#5a8a75' } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)} kg` } }
+  if (puntoSel === 'all') {
+    // Barras agrupadas por punto
+    puntoChart = new Chart(document.getElementById('chart-punto'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Costales / Empaques', data: empData, backgroundColor: '#0C6442', borderRadius: 4 },
+          { label: 'Sobres', data: sobData, backgroundColor: '#19D78E', borderRadius: 4 },
+          { label: 'Latas', data: latData, backgroundColor: '#9aefd5', borderRadius: 4 }
+        ]
       },
-      scales: {
-        x: { stacked: false, ticks: { font: { family: "'Nunito Sans', sans-serif", size: 10 }, color: '#5a8a75', maxRotation: 35 }, grid: { display: false } },
-        y: { ticks: { font: { family: "'Nunito Sans', sans-serif", size: 10 }, color: '#5a8a75', callback: v => v + ' kg' }, grid: { color: '#e8f8f1' } }
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { position: 'top', labels: { font: { family: "'Nunito Sans', sans-serif", size: 11 }, color: '#5a8a75' } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)} kg` } }
+        },
+        scales: {
+          x: { ticks: { font: { family: "'Nunito Sans', sans-serif", size: 10 }, color: '#5a8a75', maxRotation: 35 }, grid: { display: false } },
+          y: { ticks: { font: { family: "'Nunito Sans', sans-serif", size: 10 }, color: '#5a8a75', callback: v => v + ' kg' }, grid: { color: '#e8f8f1' } }
+        }
       }
-    }
-  });
+    });
+  } else {
+    // Pastel por categoría del punto seleccionado
+    const totalEmp = empData.reduce((a,b)=>a+b,0);
+    const totalSob = sobData.reduce((a,b)=>a+b,0);
+    const totalLat = latData.reduce((a,b)=>a+b,0);
+    puntoChart = new Chart(document.getElementById('chart-punto'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Costales / Empaques', 'Sobres', 'Latas'],
+        datasets: [{
+          data: [
+            Math.round(totalEmp*100)/100,
+            Math.round(totalSob*100)/100,
+            Math.round(totalLat*100)/100
+          ],
+          backgroundColor: ['#0C6442','#19D78E','#9aefd5'],
+          borderColor: '#fff',
+          borderWidth: 3,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        cutout: '62%',
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: "'Nunito Sans', sans-serif", size: 12 }, color: '#5a8a75', padding: 16 } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw.toFixed(2)} kg (${((ctx.raw/(totalEmp+totalSob+totalLat))*100).toFixed(1)}%)` } }
+        }
+      }
+    });
+  }
 }
 
 // ---- REGISTROS ----
@@ -678,6 +712,7 @@ function renderRecords() {
     const total = ((r.emp||0)+(r.sob||0)+(r.lat||0));
     const pill = r.status==='warn' ? '<span class="pill pill-warn">⚠️ Atención</span>' : '<span class="pill pill-ok">✅ Sin novedad</span>';
     const driveLink = r.drive_url ? `<a href="${r.drive_url}" target="_blank" class="drive-btn" style="padding:3px 8px;font-size:11px">📁 Ver</a>` : '—';
+    const safeId = r.id;
     return `<tr>
       <td style="white-space:nowrap">${fmtDate(r.date)}</td>
       <td style="font-weight:600">${r.loc}</td>
@@ -686,12 +721,24 @@ function renderRecords() {
       <td>${fmtNum(r.lat||0)}</td>
       <td style="font-weight:700;color:var(--g1)">${fmtNum(total)}</td>
       <td>${pill}</td>
+      <td>${driveLink}</td>
       <td style="white-space:nowrap">
-        <button class="btn-edit" onclick='openEditModal(${JSON.stringify(r)})'>✏️ Editar</button>
-        <button class="btn-danger" onclick="deleteRecord('${r.id}')">🗑️ Eliminar</button>
+        <button class="btn-edit" data-rid="${safeId}">✏️ Editar</button>
+        <button class="btn-danger" data-rid="${safeId}">🗑️ Eliminar</button>
       </td>
     </tr>`;
   }).join('');
+
+  // Attach events after render
+  document.querySelectorAll('.btn-edit[data-rid]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const r = records.find(x => x.id === btn.dataset.rid);
+      if (r) openEditModal(r);
+    });
+  });
+  document.querySelectorAll('.btn-danger[data-rid]').forEach(btn => {
+    btn.addEventListener('click', () => deleteRecord(btn.dataset.rid));
+  });
 }
 
 // ---- EXCEL ----
