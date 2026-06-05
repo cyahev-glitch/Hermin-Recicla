@@ -369,8 +369,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           <input type="text" id="f-container" placeholder="Ej. Petco Encuentro Fortuna" list="cont-list">
           <datalist id="cont-list"></datalist>
         </div>
-        <div class="field"><label>Link de evidencias (Google Drive)</label>
+        <div class="field">
+          <label>Evidencias (Google Drive)</label>
+          <div style="display:flex;gap:8px;margin-bottom:6px;">
+            <button type="button" id="drive-toggle-link" onclick="setDriveMode('link')" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid var(--border);background:var(--g4);color:var(--g1);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;">🔗 Agregar link</button>
+            <button type="button" id="drive-toggle-pending" onclick="setDriveMode('pending')" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid var(--border);background:#fff;color:var(--muted);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;">📎 Pendiente</button>
+          </div>
           <input type="url" id="f-drive" placeholder="https://drive.google.com/drive/folders/...">
+          <input type="hidden" id="f-drive-mode" value="link">
         </div>
         <div class="field"><label>Observaciones (opcional)</label>
           <textarea id="f-obs" rows="2" placeholder="Notas de la visita..."></textarea>
@@ -535,7 +541,7 @@ async function saveRecord() {
     loc: document.getElementById('f-container').value || 'Sin nombre',
     emp, sob, lat,
     obs: document.getElementById('f-obs').value,
-    drive_url: document.getElementById('f-drive').value,
+    drive_url: document.getElementById('f-drive-mode').value === 'pending' ? 'pendiente' : document.getElementById('f-drive').value,
     status: currentStatus,
     tags: tags
   };
@@ -545,8 +551,9 @@ async function saveRecord() {
   btn.disabled = false; btn.textContent = '+ Registrar recolección';
   if (error) { showToast('Error al guardar ❌'); console.error(error); return; }
   showToast('Recolección guardada ✅');
-  ['m-emp','m-sob','m-lat','f-drive'].forEach(id => document.getElementById(id).value = '');
+  ['m-emp','m-sob','m-lat'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f-obs').value = '';
+  resetDriveField();
   document.querySelectorAll('.inc-tag').forEach(t => t.classList.remove('selected'));
   selectStatus('ok');
   await loadRecords();
@@ -594,7 +601,35 @@ function switchView(v) {
   if (v === 'capture') renderRecords();
 }
 
-function selectStatus(s) {
+function setDriveMode(mode) {
+  document.getElementById('f-drive-mode').value = mode;
+  const btnLink = document.getElementById('drive-toggle-link');
+  const btnPending = document.getElementById('drive-toggle-pending');
+  const input = document.getElementById('f-drive');
+  if (mode === 'pending') {
+    btnPending.style.background = '#fffbeb';
+    btnPending.style.color = '#92400e';
+    btnPending.style.borderColor = '#fcd34d';
+    btnLink.style.background = '#fff';
+    btnLink.style.color = 'var(--muted)';
+    btnLink.style.borderColor = 'var(--border)';
+    input.style.display = 'none';
+    input.value = '';
+  } else {
+    btnLink.style.background = 'var(--g4)';
+    btnLink.style.color = 'var(--g1)';
+    btnLink.style.borderColor = 'var(--border)';
+    btnPending.style.background = '#fff';
+    btnPending.style.color = 'var(--muted)';
+    btnPending.style.borderColor = 'var(--border)';
+    input.style.display = 'block';
+  }
+}
+
+function resetDriveField() {
+  setDriveMode('link');
+  document.getElementById('f-drive').value = '';
+}
   currentStatus = s;
   document.getElementById('btn-ok').classList.toggle('selected', s === 'ok');
   document.getElementById('btn-warn').classList.toggle('selected', s === 'warn');
@@ -693,7 +728,11 @@ function renderDash() {
     const statusCell = r.status === 'warn'
       ? `<span class="pill pill-warn" onclick="toggleExpand(${i})" title="Clic para ver detalle">⚠️ Atención requerida ▾</span>`
       : `<span class="pill pill-ok">✅ Sin novedad</span>`;
-    const driveCell = r.drive_url ? `<a href="${r.drive_url}" target="_blank" class="drive-btn" style="padding:3px 8px;font-size:11px">📁 Ver</a>` : '<span style="color:var(--muted);font-size:11px">—</span>';
+    const driveCell = r.drive_url === 'pendiente'
+      ? '<span style="display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fcd34d;">📎 Pendiente</span>'
+      : r.drive_url
+        ? `<a href="${r.drive_url}" target="_blank" class="drive-btn" style="padding:3px 8px;font-size:11px">📁 Ver</a>`
+        : '<span style="color:var(--muted);font-size:11px">—</span>';
     html += `<tr><td style="font-weight:600">${r.loc}</td><td style="color:var(--muted);white-space:nowrap">${fmtDate(r.date)}</td><td>${r.emp>0?fmtNum(r.emp):'—'}</td><td>${r.sob>0?fmtNum(r.sob):'—'}</td><td>${r.lat>0?fmtNum(r.lat):'—'}</td><td style="font-weight:700;color:var(--g1)">${fmtNum(total)}</td><td>${statusCell}</td><td>${driveCell}</td></tr>`;
     if (r.status === 'warn') {
       const tagArr = Array.isArray(r.tags) ? r.tags : [];
@@ -831,7 +870,11 @@ function renderRecords() {
   document.getElementById('rec-body').innerHTML = data.map(r => {
     const total = ((r.emp||0)+(r.sob||0)+(r.lat||0));
     const pill = r.status==='warn' ? '<span class="pill pill-warn">⚠️ Atención</span>' : '<span class="pill pill-ok">✅ Sin novedad</span>';
-    const driveLink = r.drive_url ? `<a href="${r.drive_url}" target="_blank" class="drive-btn" style="padding:3px 8px;font-size:11px">📁 Ver</a>` : '—';
+    const driveLink = r.drive_url === 'pendiente'
+      ? '<span style="display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fcd34d;">📎 Pendiente</span>'
+      : r.drive_url
+        ? `<a href="${r.drive_url}" target="_blank" class="drive-btn" style="padding:3px 8px;font-size:11px">📁 Ver</a>`
+        : '—';
     const safeId = r.id;
     return `<tr>
       <td style="white-space:nowrap">${fmtDate(r.date)}</td>
