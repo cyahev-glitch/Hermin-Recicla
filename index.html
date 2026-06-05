@@ -265,6 +265,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   /* Modal full screen en móvil */
   .modal-overlay{padding:8px;}
   .modal{padding:16px;max-height:95vh;}
+  .modal-actions{flex-direction:column;}
+  .modal-actions button{width:100%;}
+  #edit-drive-toggle-link,#edit-drive-toggle-pending{font-size:11px;padding:6px;}
 }
 </style>
 </head>
@@ -454,7 +457,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <div class="field"><label>Costales / Empaques (kg)</label><input type="number" id="edit-emp" step="0.01" min="0"></div>
     <div class="field"><label>Sobres (kg)</label><input type="number" id="edit-sob" step="0.01" min="0"></div>
     <div class="field"><label>Latas (kg)</label><input type="number" id="edit-lat" step="0.01" min="0"></div>
-    <div class="field"><label>Link de evidencias (Google Drive)</label><input type="url" id="edit-drive" placeholder="https://drive.google.com/..."></div>
+    <div class="field">
+      <label>Evidencias (Google Drive)</label>
+      <div style="display:flex;gap:8px;margin-bottom:6px;">
+        <button type="button" id="edit-drive-toggle-link" onclick="setEditDriveMode('link')" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid var(--border);background:var(--g4);color:var(--g1);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;">🔗 Agregar link</button>
+        <button type="button" id="edit-drive-toggle-pending" onclick="setEditDriveMode('pending')" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid var(--border);background:#fff;color:var(--muted);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;">📎 Pendiente</button>
+      </div>
+      <input type="url" id="edit-drive" placeholder="https://drive.google.com/...">
+      <input type="hidden" id="edit-drive-mode" value="link">
+    </div>
     <div class="field"><label>Observaciones</label><textarea id="edit-obs" rows="2"></textarea></div>
     <div class="field"><label>Estado</label>
       <select id="edit-status">
@@ -578,7 +589,7 @@ async function updateRecord() {
     lat: parseFloat(document.getElementById('edit-lat').value) || 0,
     obs: document.getElementById('edit-obs').value,
     status: document.getElementById('edit-status').value,
-    drive_url: document.getElementById('edit-drive').value,
+    drive_url: document.getElementById('edit-drive-mode').value === 'pending' ? 'pendiente' : document.getElementById('edit-drive').value,
   };
   const { error } = await db.from('recolecciones').update(updated).eq('id', id);
   if (error) { showToast('Error al actualizar ❌'); return; }
@@ -631,6 +642,31 @@ function resetDriveField() {
   document.getElementById('f-drive').value = '';
 }
 
+function setEditDriveMode(mode) {
+  document.getElementById('edit-drive-mode').value = mode;
+  const btnLink = document.getElementById('edit-drive-toggle-link');
+  const btnPending = document.getElementById('edit-drive-toggle-pending');
+  const input = document.getElementById('edit-drive');
+  if (mode === 'pending') {
+    btnPending.style.background = '#fffbeb';
+    btnPending.style.color = '#92400e';
+    btnPending.style.borderColor = '#fcd34d';
+    btnLink.style.background = '#fff';
+    btnLink.style.color = 'var(--muted)';
+    btnLink.style.borderColor = 'var(--border)';
+    input.style.display = 'none';
+    input.value = '';
+  } else {
+    btnLink.style.background = 'var(--g4)';
+    btnLink.style.color = 'var(--g1)';
+    btnLink.style.borderColor = 'var(--border)';
+    btnPending.style.background = '#fff';
+    btnPending.style.color = 'var(--muted)';
+    btnPending.style.borderColor = 'var(--border)';
+    input.style.display = 'block';
+  }
+}
+
 function selectStatus(s) {
   currentStatus = s;
   document.getElementById('btn-ok').classList.toggle('selected', s === 'ok');
@@ -667,8 +703,14 @@ function openEditModal(r) {
   document.getElementById('edit-sob').value = r.sob;
   document.getElementById('edit-lat').value = r.lat;
   document.getElementById('edit-obs').value = r.obs || '';
-  document.getElementById('edit-drive').value = r.drive_url || '';
   document.getElementById('edit-status').value = r.status;
+  // Drive field
+  if (r.drive_url === 'pendiente') {
+    setEditDriveMode('pending');
+  } else {
+    setEditDriveMode('link');
+    document.getElementById('edit-drive').value = r.drive_url || '';
+  }
   document.getElementById('modal-edit').classList.add('open');
 }
 function closeModal() { document.getElementById('modal-edit').classList.remove('open'); }
