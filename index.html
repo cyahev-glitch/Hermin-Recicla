@@ -541,16 +541,21 @@ async function loadRecords() {
 }
 
 async function saveRecord() {
-  const emp = parseFloat(document.getElementById('m-emp').value) || 0;
-  const sob = parseFloat(document.getElementById('m-sob').value) || 0;
-  const lat = parseFloat(document.getElementById('m-lat').value) || 0;
-  if (emp + sob + lat === 0) { showToast('Agrega al menos un peso ⚠️'); return; }
+  const emp = parseFloat(document.getElementById('m-emp').value) ?? 0;
+  const sob = parseFloat(document.getElementById('m-sob').value) ?? 0;
+  const lat = parseFloat(document.getElementById('m-lat').value) ?? 0;
+  const loc = document.getElementById('f-container').value.trim();
+  if (!loc) { showToast('Agrega el nombre del contenedor ⚠️'); return; }
+  // Allow all zeros — sometimes containers are empty
+  const empVal = isNaN(emp) ? 0 : emp;
+  const sobVal = isNaN(sob) ? 0 : sob;
+  const latVal = isNaN(lat) ? 0 : lat;
   const tags = [...document.querySelectorAll('.inc-tag.selected')].map(e => e.dataset.tag);
   const record = {
     month: document.getElementById('f-month').value,
     date: document.getElementById('f-date').value,
-    loc: document.getElementById('f-container').value || 'Sin nombre',
-    emp, sob, lat,
+    loc,
+    emp: empVal, sob: sobVal, lat: latVal,
     obs: document.getElementById('f-obs').value,
     drive_url: document.getElementById('f-drive-mode').value === 'pending' ? 'pendiente' : document.getElementById('f-drive').value,
     status: currentStatus,
@@ -704,14 +709,16 @@ function openEditModal(r) {
   document.getElementById('edit-lat').value = r.lat;
   document.getElementById('edit-obs').value = r.obs || '';
   document.getElementById('edit-status').value = r.status;
-  // Drive field
-  if (r.drive_url === 'pendiente') {
-    setEditDriveMode('pending');
-  } else {
-    setEditDriveMode('link');
-    document.getElementById('edit-drive').value = r.drive_url || '';
-  }
   document.getElementById('modal-edit').classList.add('open');
+  // Set drive mode AFTER modal is visible
+  setTimeout(() => {
+    if (r.drive_url === 'pendiente') {
+      setEditDriveMode('pending');
+    } else {
+      setEditDriveMode('link');
+      document.getElementById('edit-drive').value = r.drive_url || '';
+    }
+  }, 50);
 }
 function closeModal() { document.getElementById('modal-edit').classList.remove('open'); }
 
