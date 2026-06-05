@@ -226,8 +226,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           <option value="all">Todos los puntos</option>
         </select>
       </div>
-      <div style="position:relative;width:100%;min-height:220px;">
-        <canvas id="chart-punto"></canvas>
+      <div style="position:relative;width:100%;max-height:300px;">
+        <canvas id="chart-punto" style="max-height:280px;"></canvas>
       </div>
     </div>
 
@@ -574,9 +574,10 @@ function renderDash() {
     {l:'Latas',v:lat,c:'#9aefd5'}
   ].map(m => `<div class="bar-row"><span class="bar-label">${m.l}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(m.v/maxMat*100)}%;background:${m.c}"></div></div><span class="bar-val">${fmtNum(m.v)} kg</span></div>`).join('');
 
-  // Por mes
-  const mts = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const mT = mts.map(m => ({m, v: records.filter(r => r.month === m).reduce((a,r) => a+(r.emp||0)+(r.sob||0)+(r.lat||0), 0)}));
+  // Por mes — solo meses con datos
+  const monthOrder = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const mtsConDatos = monthOrder.filter(m => records.some(r => r.month === m));
+  const mT = mtsConDatos.map(m => ({m, v: records.filter(r => r.month === m).reduce((a,r) => a+(r.emp||0)+(r.sob||0)+(r.lat||0), 0)}));
   const maxM = Math.max(...mT.map(x => x.v)) || 1;
   document.getElementById('bar-month').innerHTML = mT.map(({m,v}) =>
     `<div class="bar-row"><span class="bar-label" style="width:75px;font-size:10px">${MONTH_NAMES[m].split(' ')[0]}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxM*100)}%;background:var(--g3)"></div></div><span class="bar-val">${fmtNum(v)} kg</span></div>`
@@ -642,7 +643,7 @@ function renderPunto() {
   document.getElementById('chart-punto').style.display = 'block';
 
   if (puntoSel === 'all') {
-    // Barras agrupadas por punto
+    // Barras agrupadas — tamaño controlado, valores visibles en tooltip
     puntoChart = new Chart(document.getElementById('chart-punto'), {
       type: 'bar',
       data: {
@@ -655,22 +656,24 @@ function renderPunto() {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
+        animation: false,
         plugins: {
           legend: { position: 'top', labels: { font: { family: "'Nunito Sans', sans-serif", size: 11 }, color: '#5a8a75' } },
           tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)} kg` } }
         },
         scales: {
-          x: { ticks: { font: { family: "'Nunito Sans', sans-serif", size: 10 }, color: '#5a8a75', maxRotation: 35 }, grid: { display: false } },
+          x: { ticks: { font: { family: "'Nunito Sans', sans-serif", size: 9 }, color: '#5a8a75', maxRotation: 40 }, grid: { display: false } },
           y: { ticks: { font: { family: "'Nunito Sans', sans-serif", size: 10 }, color: '#5a8a75', callback: v => v + ' kg' }, grid: { color: '#e8f8f1' } }
         }
       }
     });
   } else {
-    // Pastel por categoría del punto seleccionado
+    // Pastel — muestra los valores directamente en el centro
     const totalEmp = empData.reduce((a,b)=>a+b,0);
     const totalSob = sobData.reduce((a,b)=>a+b,0);
     const totalLat = latData.reduce((a,b)=>a+b,0);
+    const grandTotal = totalEmp + totalSob + totalLat;
     puntoChart = new Chart(document.getElementById('chart-punto'), {
       type: 'doughnut',
       data: {
@@ -689,10 +692,27 @@ function renderPunto() {
       },
       options: {
         responsive: true,
-        cutout: '62%',
+        maintainAspectRatio: false,
+        cutout: '58%',
         plugins: {
-          legend: { position: 'bottom', labels: { font: { family: "'Nunito Sans', sans-serif", size: 12 }, color: '#5a8a75', padding: 16 } },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw.toFixed(2)} kg (${((ctx.raw/(totalEmp+totalSob+totalLat))*100).toFixed(1)}%)` } }
+          legend: {
+            position: 'right',
+            labels: {
+              font: { family: "'Nunito Sans', sans-serif", size: 11 },
+              color: '#5a8a75',
+              padding: 12,
+              generateLabels: chart => {
+                const ds = chart.data.datasets[0];
+                return chart.data.labels.map((label, i) => ({
+                  text: `${label}: ${ds.data[i].toFixed(2)} kg (${grandTotal>0?((ds.data[i]/grandTotal)*100).toFixed(1):0}%)`,
+                  fillStyle: ds.backgroundColor[i],
+                  hidden: false,
+                  index: i
+                }));
+              }
+            }
+          },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.raw.toFixed(2)} kg (${grandTotal>0?((ctx.raw/grandTotal)*100).toFixed(1):0}%)` } }
         }
       }
     });
