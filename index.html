@@ -150,33 +150,121 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .modal h2{font-size:16px;font-weight:800;color:var(--g1);margin-bottom:16px;}
 .modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;}
 
-/* RESPONSIVE */
+/* RESPONSIVE TABLET (max 768px) */
 @media(max-width:768px){
   .app{padding:10px;}
-  .topbar{padding:10px 14px;}
-  .logo-h{font-size:15px;}
+  .topbar{padding:10px 14px;gap:8px;}
+  .logo-h{font-size:14px;}
+  .logo-s{font-size:9px;}
+  .logo img{width:34px;height:34px;}
   .tabs{gap:4px;}
   .tab{padding:6px 10px;font-size:12px;}
+
+  /* Dashboard controls */
+  .dash-controls{flex-direction:column;align-items:flex-start;gap:8px;}
+  .client-name{font-size:15px;}
+  .dash-controls select{width:100%;font-size:13px;}
+
+  /* KPIs */
+  .kpi-grid{grid-template-columns:1fr 1fr;gap:8px;}
+  .kpi{padding:12px 14px;}
+  .kpi-value{font-size:20px;}
+  .kpi-unit{font-size:10px;}
+  .kpi-label{font-size:10px;}
+
+  /* Charts */
+  .charts-row{grid-template-columns:1fr;gap:10px;}
+  .chart-card{padding:12px;}
+  .chart-title{font-size:12px;}
+  .bar-label{width:70px;font-size:10px;}
+  .bar-val{width:60px;font-size:10px;}
+
+  /* Punto card */
+  .punto-card{padding:12px;}
+  .punto-card .section-title{font-size:12px;}
+
+  /* Table */
+  .tbl-card{padding:12px;}
+  .tbl{font-size:11px;}
+  .tbl th{padding:6px 7px;font-size:10px;}
+  .tbl td{padding:6px 7px;}
+  .tbl-search input{font-size:12px;}
+  .export-btn{font-size:11px;padding:6px 10px;}
+
+  /* Capture */
   .capture-grid{grid-template-columns:1fr;}
   .mat-grid{grid-template-columns:1fr 1fr;}
+  .card{padding:14px;}
+  .field input,.field select,.field textarea{font-size:13px;}
+  .btn-primary{font-size:13px;padding:10px;}
+
+  /* Records table */
+  .rec-table{font-size:11px;}
+  .rec-table th{padding:6px 7px;font-size:10px;}
+  .rec-table td{padding:5px 7px;}
+  .btn-edit,.btn-danger{padding:4px 8px;font-size:11px;}
+
+  /* Modal */
+  .modal{padding:18px;}
+  .modal h2{font-size:15px;}
+}
+
+/* RESPONSIVE MOBILE (max 480px) */
+@media(max-width:480px){
+  .app{padding:8px;}
+  .topbar{padding:8px 12px;}
+  .logo-h{font-size:13px;}
+  .tabs{width:100%;justify-content:center;}
+  .tab{flex:1;text-align:center;padding:7px 4px;font-size:11px;}
+
+  /* KPIs — una columna en móvil pequeño */
   .kpi-grid{grid-template-columns:1fr 1fr;}
   .kpi-value{font-size:18px;}
-  .charts-row{grid-template-columns:1fr;}
-  .client-name{font-size:16px;}
-  .dash-controls{gap:6px;}
-  .dash-controls select{font-size:12px;padding:6px 8px;}
-  .tbl{font-size:11px;}
-  .tbl th,.tbl td{padding:6px 7px;}
-  .bar-label{width:55px;font-size:10px;}
-  .bar-val{width:55px;font-size:10px;}
-  .punto-bar-label{min-width:120px;font-size:11px;}
-}
-@media(max-width:480px){
-  .kpi-grid{grid-template-columns:1fr;}
+
+  /* Materiales en captura — una columna */
   .mat-grid{grid-template-columns:1fr;}
   .status-selector{flex-direction:column;}
-  .tabs{width:100%;justify-content:center;}
-  .tab{flex:1;text-align:center;padding:7px 6px;}
+
+  /* Ocultar columnas menos críticas en tabla */
+  .tbl th:nth-child(3),
+  .tbl td:nth-child(3),
+  .tbl th:nth-child(4),
+  .tbl td:nth-child(4),
+  .tbl th:nth-child(5),
+  .tbl td:nth-child(5){display:none;}
+
+  /* Tabla de registros — ocultar columnas secundarias */
+  .rec-table th:nth-child(3),
+  .rec-table td:nth-child(3),
+  .rec-table th:nth-child(4),
+  .rec-table td:nth-child(4),
+  .rec-table th:nth-child(5),
+  .rec-table td:nth-child(5){display:none;}
+
+  /* Botones de acción apilados */
+  .rec-table td:last-child{white-space:normal;}
+  .btn-edit,.btn-danger{display:block;width:100%;margin-bottom:4px;text-align:center;}
+
+  /* Dash controls */
+  .dash-controls{gap:6px;}
+  .client-name{font-size:14px;}
+
+  /* Bar labels más cortos */
+  .bar-label{width:60px;}
+  .bar-val{width:52px;}
+
+  /* Punto select full width */
+  #sel-punto{width:100%;}
+
+  /* Chart tamaño controlado */
+  .punto-card canvas{max-height:220px!important;}
+
+  /* Export button */
+  .export-btn{width:100%;justify-content:center;}
+
+  /* Modal full screen en móvil */
+  .modal-overlay{padding:8px;}
+  .modal{padding:16px;max-height:95vh;}
 }
 </style>
 </head>
@@ -411,10 +499,22 @@ function populateMonthSelector() {
 async function loadRecords() {
   const { data, error } = await db.from('recolecciones').select('*').order('date', { ascending: true });
   if (error) { console.error(error); return; }
-  // Normalizar: reemplazar "Petco Fortuna" por "Petco Encuentro Fortuna"
+  const NAME_FIX = {
+    'Corp. Nestlé': 'Corporativo Nestlé',
+    'Corp. Nestlé Polanco': 'Corporativo Nestlé Polanco',
+    'Corp. Purina Cuautitlán': 'Corporativo Purina Cuautitlán',
+    'Fábrica / Corp. Purina Cuautitlán': 'Fábrica Purina Cuautitlán',
+    'Hospital Vet. Echegaray': 'Hospital Veterinaria Echegaray',
+    'Hospital Vet. Pet Xclusive': 'Hospital Veterinaria Pet Xclusive',
+    'Hospital Vet. Rampú': 'Hospital Veterinaria Rampú',
+    'Pet Xclusive': 'Pet Xclusive Boutique',
+    'Petco Cuitlahuac': 'Petco Cuitláhuac',
+    'Petco Oasis Coyoacán': 'Petco Oásis Coyoacán',
+    'Petco Fortuna': 'Petco Encuentro Fortuna',
+  };
   records = (data || []).map(r => ({
     ...r,
-    loc: r.loc === 'Petco Fortuna' ? 'Petco Encuentro Fortuna' : r.loc
+    loc: NAME_FIX[r.loc] || r.loc
   }));
   renderDash();
   renderRecords();
