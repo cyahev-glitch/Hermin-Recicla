@@ -6,6 +6,7 @@
 <title>Hermin Recicla · Dashboard Purina</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -202,18 +203,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
       <label>Mes:</label>
       <select id="sel-month" onchange="renderDash()">
         <option value="all">Todos los meses</option>
-        <option value="Ene">Enero 2026</option>
-        <option value="Feb">Febrero 2026</option>
-        <option value="Mar">Marzo 2026</option>
-        <option value="Apr">Abril 2026</option>
-        <option value="May">Mayo 2026</option>
-        <option value="Jun">Junio 2026</option>
-        <option value="Jul">Julio 2026</option>
-        <option value="Aug">Agosto 2026</option>
-        <option value="Sep">Septiembre 2026</option>
-        <option value="Oct">Octubre 2026</option>
-        <option value="Nov">Noviembre 2026</option>
-        <option value="Dec">Diciembre 2026</option>
       </select>
     </div>
 
@@ -237,7 +226,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           <option value="all">Todos los puntos</option>
         </select>
       </div>
-      <div class="bar-chart" id="bar-punto"></div>
+      <div style="position:relative;width:100%;min-height:220px;">
+        <canvas id="chart-punto"></canvas>
+      </div>
     </div>
 
     <!-- Tabla de visitas -->
@@ -403,8 +394,18 @@ const MONTH_NAMES = {
 let records = [];
 let currentStatus = 'ok';
 let openRow = null;
+let puntoChart = null;
 
 document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+
+function populateMonthSelector() {
+  const monthOrder = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const present = [...new Set(records.map(r => r.month))].sort((a,b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
+  const sel = document.getElementById('sel-month');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="all">Todos los meses</option>' +
+    present.map(m => `<option value="${m}"${m===prev?' selected':''}>${MONTH_NAMES[m]||m}</option>`).join('');
+}
 
 // ---- SUPABASE ----
 async function loadRecords() {
@@ -419,6 +420,7 @@ async function loadRecords() {
   renderRecords();
   populateContainerList();
   populatePuntoList();
+  populateMonthSelector();
 }
 
 async function saveRecord() {
@@ -605,31 +607,62 @@ function renderPunto() {
   const puntoSel = document.getElementById('sel-punto').value;
   let data = m === 'all' ? records : records.filter(r => r.month === m);
 
+  let labels, empData, sobData, latData;
+
   if (puntoSel === 'all') {
-    // Mostrar todos los puntos como barras
     const puntoMap = {};
     data.forEach(r => {
-      if (!puntoMap[r.loc]) puntoMap[r.loc] = 0;
-      puntoMap[r.loc] += (r.emp||0)+(r.sob||0)+(r.lat||0);
+      if (!puntoMap[r.loc]) puntoMap[r.loc] = {emp:0, sob:0, lat:0};
+      puntoMap[r.loc].emp += (r.emp||0);
+      puntoMap[r.loc].sob += (r.sob||0);
+      puntoMap[r.loc].lat += (r.lat||0);
     });
-    const sorted = Object.entries(puntoMap).sort((a,b) => b[1]-a[1]);
-    const maxV = sorted[0]?.[1] || 1;
-    document.getElementById('bar-punto').innerHTML = sorted.map(([loc,v]) =>
-      `<div class="bar-row"><span class="bar-label punto-bar-label" style="width:auto;min-width:140px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${loc}">${loc}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxV*100)}%;background:var(--g2)"></div></div><span class="bar-val">${fmtNum(v)} kg</span></div>`
-    ).join('') || '<div class="empty">Sin datos</div>';
+    const sorted = Object.entries(puntoMap).sort((a,b) => (b[1].emp+b[1].sob+b[1].lat)-(a[1].emp+a[1].sob+a[1].lat));
+    labels = sorted.map(([loc]) => loc);
+    empData = sorted.map(([,v]) => Math.round(v.emp*100)/100);
+    sobData = sorted.map(([,v]) => Math.round(v.sob*100)/100);
+    latData = sorted.map(([,v]) => Math.round(v.lat*100)/100);
   } else {
-    // Mostrar breakdown del punto seleccionado
     const puntoData = data.filter(r => r.loc === puntoSel);
-    const emp = puntoData.reduce((a,r) => a+(r.emp||0), 0);
-    const sob = puntoData.reduce((a,r) => a+(r.sob||0), 0);
-    const lat = puntoData.reduce((a,r) => a+(r.lat||0), 0);
-    const maxV = Math.max(emp,sob,lat) || 1;
-    document.getElementById('bar-punto').innerHTML = [
-      {l:'Costales / Empaques',v:emp,c:'#0C6442'},
-      {l:'Sobres',v:sob,c:'#19D78E'},
-      {l:'Latas',v:lat,c:'#9aefd5'}
-    ].map(m => `<div class="bar-row"><span class="bar-label punto-bar-label" style="min-width:160px">${m.l}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(m.v/maxV*100)}%;background:${m.c}"></div></div><span class="bar-val">${fmtNum(m.v)} kg</span></div>`).join('') || '<div class="empty">Sin datos para este punto</div>';
+    const monthOrder = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const months = [...new Set(puntoData.map(r => r.month))].sort((a,b) => monthOrder.indexOf(a)-monthOrder.indexOf(b));
+    labels = months.map(m => MONTH_NAMES[m]?.split(' ')[0] || m);
+    empData = months.map(m => Math.round(puntoData.filter(r=>r.month===m).reduce((a,r)=>a+(r.emp||0),0)*100)/100);
+    sobData = months.map(m => Math.round(puntoData.filter(r=>r.month===m).reduce((a,r)=>a+(r.sob||0),0)*100)/100);
+    latData = months.map(m => Math.round(puntoData.filter(r=>r.month===m).reduce((a,r)=>a+(r.lat||0),0)*100)/100);
   }
+
+  if (puntoChart) { puntoChart.destroy(); puntoChart = null; }
+
+  if (!labels.length) {
+    document.getElementById('chart-punto').style.display = 'none';
+    return;
+  }
+  document.getElementById('chart-punto').style.display = 'block';
+
+  puntoChart = new Chart(document.getElementById('chart-punto'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Costales / Empaques', data: empData, backgroundColor: '#0C6442', borderRadius: 4 },
+        { label: 'Sobres', data: sobData, backgroundColor: '#19D78E', borderRadius: 4 },
+        { label: 'Latas', data: latData, backgroundColor: '#9aefd5', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { position: 'top', labels: { font: { family: "'Nunito Sans', sans-serif", size: 11 }, color: '#5a8a75' } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)} kg` } }
+      },
+      scales: {
+        x: { stacked: false, ticks: { font: { family: "'Nunito Sans', sans-serif", size: 10 }, color: '#5a8a75', maxRotation: 35 }, grid: { display: false } },
+        y: { ticks: { font: { family: "'Nunito Sans', sans-serif", size: 10 }, color: '#5a8a75', callback: v => v + ' kg' }, grid: { color: '#e8f8f1' } }
+      }
+    }
+  });
 }
 
 // ---- REGISTROS ----
