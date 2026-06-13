@@ -718,7 +718,9 @@ function openEditModal(r) {
 function closeModal() { document.getElementById('modal-edit').classList.remove('open'); }
 
 function populateContainerList() {
-  const locs = [...new Set(records.map(r => r.loc))].sort();
+  const FIXED_LOCS = ['Bodega de Refugio Adopta Un Amigo Para Siempre'];
+  const fromRecords = records.map(r => r.loc);
+  const locs = [...new Set([...FIXED_LOCS, ...fromRecords])].sort();
   document.getElementById('cont-list').innerHTML = locs.map(l => `<option value="${l}">`).join('');
 }
 
