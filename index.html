@@ -284,14 +284,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
     <!-- HEADER LIMPIO -->
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
-      <div>
-        <div style="font-size:20px;font-weight:800;color:var(--text);">Purina <span style="color:var(--muted);font-weight:600;">· Programa de reciclaje 2026</span></div>
-        <div id="exec-sub" style="font-size:12px;color:var(--muted);margin-top:3px;">Cargando...</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span id="exec-badge" style="background:var(--g4);color:var(--g1);font-size:11px;font-weight:700;padding:5px 14px;border-radius:20px;border:1px solid var(--border);">En curso</span>
-        <button onclick="exportExcel()" class="export-btn" style="padding:7px 14px;font-size:12px;">⬇️ Excel</button>
-      </div>
+      <div style="font-size:20px;font-weight:800;color:var(--text);">Purina <span style="color:var(--muted);font-weight:600;">· Programa de reciclaje 2026</span></div>
+      <button onclick="exportExcel()" class="export-btn" style="padding:7px 14px;font-size:12px;">⬇️ Excel</button>
     </div>
 
     <!-- TABS DE MESES -->
@@ -555,10 +549,7 @@ function renderExec() {
   document.getElementById('exec-bar2').style.width = Math.min(100, Math.round(visits/50*100))+'%';
   document.getElementById('exec-bar3').style.width = warn>0 ? Math.min(100, Math.round(warn/visits*100*3))+'%' : '0%';
   const monthCount = months.length;
-  updateTimestamp();
-  if (!lastLoadTime) {
-    document.getElementById('exec-sub').textContent = `${monthCount} ${monthCount===1?'mes activo':'meses activos'} · Cargando...`;
-  }
+  // exec-sub removed
 }
 
 // ---- SUPABASE ----
@@ -746,14 +737,7 @@ function fmtNum(n) {
 // Timestamp relativo
 let lastLoadTime = null;
 function updateTimestamp() {
-  if (!lastLoadTime) return;
-  const diff = Math.floor((Date.now() - lastLoadTime) / 60000);
-  const txt = diff < 1 ? 'hace un momento' : diff === 1 ? 'hace 1 min' : `hace ${diff} min`;
-  const el = document.getElementById('exec-sub');
-  if (el) {
-    const monthCount = [...new Set(records.map(r => r.month))].length;
-    el.textContent = `${monthCount} ${monthCount===1?'mes activo':'meses activos'} · Actualizado ${txt}`;
-  }
+  // exec-sub removed from header, no-op
 }
 
 // Animación de número contando hacia arriba
@@ -906,7 +890,7 @@ function renderDash() {
       ? `<span class="pill pill-warn" onclick="toggleExpand(${i})" title="Clic para ver detalle">▲ Atención ▾</span>`
       : `<span class="pill pill-ok">✓ Sin novedad</span>`;
     const driveCell = r.drive_url === 'pendiente'
-      ? '<span style="display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fcd34d;">⏱ Pendiente</span>'
+      ? '<span style="display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fcd34d;">📎 Evidencia pendiente</span>'
       : r.drive_url
         ? `<a href="${r.drive_url}" target="_blank" class="drive-btn" style="padding:3px 8px;font-size:11px">📁 Ver</a>`
         : '<span style="color:var(--muted);font-size:11px">—</span>';
@@ -1012,6 +996,29 @@ function renderInsights(data, total, warnCount) {
     </div>`).join('');
 }
 
+function toggleAllPuntos(btn, sorted, maxV) {
+  const list = document.getElementById('ranking-list');
+  const isExpanded = btn.dataset.expanded === '1';
+  if (isExpanded) {
+    list.innerHTML = sorted.slice(0, 10).map((p, i) => buildPuntoRow(p, i, maxV)).join('');
+    btn.textContent = `Ver todos (${sorted.length}) ▾`;
+    btn.dataset.expanded = '0';
+  } else {
+    list.innerHTML = sorted.map((p, i) => buildPuntoRow(p, i, maxV)).join('');
+    btn.textContent = 'Ver menos ▴';
+    btn.dataset.expanded = '1';
+  }
+}
+function buildPuntoRow(p, i, maxV) {
+  return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:.5px solid var(--border);">
+    <span style="font-size:11px;color:var(--muted);width:16px;text-align:right;flex-shrink:0;">${i+1}</span>
+    <span style="font-size:12px;font-weight:600;color:var(--text);width:160px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${p.loc}">${p.loc}</span>
+    <div style="flex:1;height:8px;background:var(--g4);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${Math.round(p.total/maxV*100)}%;background:var(--g1);border-radius:4px;"></div></div>
+    <span style="font-size:12px;font-weight:700;color:var(--g1);width:75px;text-align:right;flex-shrink:0;">${fmtNum(p.total)} kg</span>
+    ${p.warn > 0 ? `<span style="font-size:10px;background:var(--warn-bg);color:var(--warn-text);border:1px solid var(--warn-border);padding:1px 7px;border-radius:20px;flex-shrink:0;">⚠️ ${p.warn}</span>` : '<span style="width:44px;flex-shrink:0;"></span>'}
+  </div>`;
+}
+
 function renderPunto() {
   const m = selectedMonth;
   const puntoSel = document.getElementById('sel-punto').value;
@@ -1033,7 +1040,7 @@ function renderPunto() {
       .sort((a,b) => b.total - a.total);
     if (!sorted.length) { container.innerHTML = '<div class="empty">Sin datos para este periodo</div>'; return; }
     const maxV = sorted[0].total || 1;
-    container.innerHTML = sorted.map((p, i) => `
+    container.innerHTML = `<div id="ranking-list">${sorted.slice(0, 10).map((p, i) => `
       <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:.5px solid var(--border);">
         <span style="font-size:11px;color:var(--muted);width:16px;text-align:right;flex-shrink:0;">${i+1}</span>
         <span style="font-size:12px;font-weight:600;color:var(--text);width:160px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${p.loc}">${p.loc}</span>
@@ -1042,7 +1049,10 @@ function renderPunto() {
         </div>
         <span style="font-size:12px;font-weight:700;color:var(--g1);width:75px;text-align:right;flex-shrink:0;">${fmtNum(p.total)} kg</span>
         ${p.warn > 0 ? `<span style="font-size:10px;background:var(--warn-bg);color:var(--warn-text);border:1px solid var(--warn-border);padding:1px 7px;border-radius:20px;flex-shrink:0;">⚠️ ${p.warn}</span>` : '<span style="width:44px;flex-shrink:0;"></span>'}
-      </div>`).join('');
+      </div>`).join('')}
+    </div>
+    ${sorted.length > 10 ? `<button onclick="toggleAllPuntos(this, ${JSON.stringify(sorted.map(p=>({...p}))).replace(/"/g,'&quot;')}, ${maxV})" style="margin-top:10px;padding:6px 14px;border:1.5px solid var(--border);border-radius:8px;background:#fff;color:var(--muted);font-family:var(--font);font-size:12px;cursor:pointer;">Ver todos (${sorted.length}) ▾</button>` : ''}
+    `;
   } else {
     // Detalle del punto seleccionado: materiales + historial por mes
     const puntoData = data.filter(r => r.loc === puntoSel);
@@ -1085,7 +1095,7 @@ function renderRecords() {
     const total = ((r.emp||0)+(r.sob||0)+(r.lat||0));
     const pill = r.status==='warn' ? '<span class="pill pill-warn">▲ Atención</span>' : '<span class="pill pill-ok">✓ Sin novedad</span>';
     const driveLink = r.drive_url === 'pendiente'
-      ? '<span style="display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fcd34d;">📎 Pendiente</span>'
+      ? '<span style="display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fcd34d;">📎 Evidencia pendiente</span>'
       : r.drive_url
         ? `<a href="${r.drive_url}" target="_blank" class="drive-btn" style="padding:3px 8px;font-size:11px">📁 Ver</a>`
         : '—';
