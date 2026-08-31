@@ -113,8 +113,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
 /* PILLS */
 .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;cursor:default;}
-.pill-ok{background:var(--g4);color:var(--g1);}
-.pill-warn{background:var(--warn-bg);color:var(--warn-text);cursor:pointer;border:1px solid var(--warn-border);}
+.pill-ok{background:var(--g4);color:var(--g1);display:inline-flex;align-items:center;gap:4px;}
+.pill-warn{background:var(--warn-bg);color:var(--warn-text);cursor:pointer;border:1px solid var(--warn-border);display:inline-flex;align-items:center;gap:4px;}
 .pill-warn:hover{background:#fef3c7;}
 .tag-sm{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600;background:#fff3cd;color:#7c5c00;border:1px solid #f59e0b33;margin:1px 2px 1px 0;}
 
@@ -291,8 +291,27 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
     <!-- KPIs: solo total y atención -->
     <div class="kpi-grid">
-      <div class="kpi"><div class="kpi-label">Total recolectado</div><div class="kpi-value" id="k-total">—</div><div class="kpi-unit">kg acumulados</div></div>
-      <div class="kpi warn"><div class="kpi-label">⚠️ Atención requerida</div><div class="kpi-value warn" id="k-warn">—</div><div class="kpi-unit">visitas con incidencia</div></div>
+      <div class="kpi">
+        <div class="kpi-icon-wrap" style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:10px;background:var(--g4);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">♻️</div>
+          <div>
+            <div class="kpi-label">Total recolectado</div>
+            <div class="kpi-value" id="k-total">—</div>
+            <div class="kpi-unit">kg acumulados</div>
+            <div id="k-trend" style="font-size:11px;color:var(--g2);margin-top:3px;display:none"></div>
+          </div>
+        </div>
+      </div>
+      <div class="kpi warn">
+        <div class="kpi-icon-wrap" style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:10px;background:var(--warn-bg);border:1px solid var(--warn-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">⚠️</div>
+          <div>
+            <div class="kpi-label">Atención requerida</div>
+            <div class="kpi-value warn" id="k-warn">—</div>
+            <div class="kpi-unit">visitas con incidencia</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Por material y por mes -->
@@ -749,13 +768,35 @@ function renderDash() {
   document.getElementById('k-total').textContent = fmtNum(total);
   document.getElementById('k-warn').textContent = data.filter(r => r.status === 'warn').length;
 
+  // Tendencia vs mes anterior
+  const trendEl = document.getElementById('k-trend');
+  const selMonth = document.getElementById('sel-month').value;
+  if (selMonth !== 'all') {
+    const monthOrder = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const idx = monthOrder.indexOf(selMonth);
+    if (idx > 0) {
+      const prevMonth = monthOrder[idx - 1];
+      const prevData = records.filter(r => r.month === prevMonth);
+      const prevTotal = prevData.reduce((a,r) => a+(r.emp||0)+(r.sob||0)+(r.lat||0), 0);
+      if (prevTotal > 0) {
+        const diff = ((total - prevTotal) / prevTotal * 100).toFixed(1);
+        const arrow = diff >= 0 ? '↑' : '↓';
+        const sign = diff >= 0 ? '+' : '';
+        trendEl.textContent = `${arrow} ${sign}${diff}% vs. mes anterior`;
+        trendEl.style.color = diff >= 0 ? 'var(--g2)' : 'var(--warn-text)';
+        trendEl.style.display = 'block';
+      } else { trendEl.style.display = 'none'; }
+    } else { trendEl.style.display = 'none'; }
+  } else { trendEl.style.display = 'none'; }
+
   // Por material
   const maxMat = Math.max(emp,sob,lat) || 1;
+  const matTotal = emp + sob + lat || 1;
   document.getElementById('bar-mat').innerHTML = [
     {l:'Costales / Empaques',v:emp,c:'#0C6442'},
     {l:'Sobres',v:sob,c:'#19D78E'},
     {l:'Latas',v:lat,c:'#9aefd5'}
-  ].map(m => `<div class="bar-row"><span class="bar-label">${m.l}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(m.v/maxMat*100)}%;background:${m.c}"></div></div><span class="bar-val">${fmtNum(m.v)} kg</span></div>`).join('');
+  ].map(m => `<div class="bar-row"><span class="bar-label">${m.l}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(m.v/maxMat*100)}%;background:${m.c}"></div></div><span class="bar-val">${fmtNum(m.v)} kg <span style="color:var(--muted);font-size:10px;font-weight:400">${Math.round(m.v/matTotal*100)}%</span></span></div>`).join('');
 
   // Por mes — solo meses con datos
   const monthOrder = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -774,8 +815,8 @@ function renderDash() {
   sorted.forEach((r,i) => {
     const total = ((r.emp||0)+(r.sob||0)+(r.lat||0));
     const statusCell = r.status === 'warn'
-      ? `<span class="pill pill-warn" onclick="toggleExpand(${i})" title="Clic para ver detalle">⚠️ Atención requerida ▾</span>`
-      : `<span class="pill pill-ok">✅ Sin novedad</span>`;
+      ? `<span class="pill pill-warn" onclick="toggleExpand(${i})" title="Clic para ver detalle">▲ Atención ▾</span>`
+      : `<span class="pill pill-ok">✓ Sin novedad</span>`;
     const driveCell = r.drive_url === 'pendiente'
       ? '<span style="display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fcd34d;">📎 Pendiente</span>'
       : r.drive_url
@@ -917,7 +958,7 @@ function renderRecords() {
   }
   document.getElementById('rec-body').innerHTML = data.map(r => {
     const total = ((r.emp||0)+(r.sob||0)+(r.lat||0));
-    const pill = r.status==='warn' ? '<span class="pill pill-warn">⚠️ Atención</span>' : '<span class="pill pill-ok">✅ Sin novedad</span>';
+    const pill = r.status==='warn' ? '<span class="pill pill-warn">▲ Atención</span>' : '<span class="pill pill-ok">✓ Sin novedad</span>';
     const driveLink = r.drive_url === 'pendiente'
       ? '<span style="display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fcd34d;">📎 Pendiente</span>'
       : r.drive_url
