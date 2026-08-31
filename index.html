@@ -344,9 +344,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <div class="tbl-card">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
         <div class="section-title" style="margin:0">Detalle de visitas</div>
-        <div class="search-wrap" style="max-width:240px;">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="search-input" placeholder="Buscar contenedor..." oninput="renderDash()" class="search-input">
+        <div style="position:relative;max-width:240px;">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;">🔍</span>
+          <input type="text" id="search-input" placeholder="Buscar contenedor..." oninput="renderDash()" style="width:100%;padding:7px 10px 7px 32px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:12px;color:var(--text);background:#fff;outline:none;">
         </div>
       </div>
       <div class="tbl-wrap">
@@ -867,10 +867,23 @@ function renderDash() {
   const maxMat = Math.max(emp,sob,lat) || 1;
   const matTotal = emp + sob + lat || 1;
   document.getElementById('bar-mat').innerHTML = [
-    {l:'Costales / Empaques',v:emp,c:'#0C6442'},
+    {l:'Costales',v:emp,c:'#0C6442'},
     {l:'Sobres',v:sob,c:'#19D78E'},
     {l:'Latas',v:lat,c:'#9aefd5'}
-  ].map(m => `<div class="bar-row"><span class="bar-label">${m.l}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(m.v/maxMat*100)}%;background:${m.c}"></div></div><span class="bar-val">${fmtNum(m.v)} kg <span style="color:var(--muted);font-size:10px;font-weight:400">${Math.round(m.v/matTotal*100)}%</span></span></div>`).join('');
+  ].map(m => {
+    const pct = Math.round(m.v/matTotal*100);
+    const showPctInside = pct >= 15;
+    return `<div class="bar-row">
+      <span class="bar-label">${m.l}</span>
+      <div class="bar-track" style="position:relative;">
+        <div class="bar-fill" style="width:${Math.round(m.v/maxMat*100)}%;background:${m.c};display:flex;align-items:center;justify-content:flex-end;padding-right:5px;">
+          ${showPctInside ? `<span style="font-size:10px;font-weight:700;color:${m.c==='#9aefd5'?'#0C6442':'#fff'};white-space:nowrap;">${pct}%</span>` : ''}
+        </div>
+        ${!showPctInside ? `<span style="position:absolute;left:calc(${Math.round(m.v/maxMat*100)}% + 5px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--muted);">${pct}%</span>` : ''}
+      </div>
+      <span class="bar-val">${fmtNum(m.v)} kg</span>
+    </div>`;
+  }).join('');
 
   // Por mes — solo meses con datos
   const monthOrder = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -988,21 +1001,6 @@ function renderInsights(data, total, warnCount) {
     }
   }
 
-  // Incidencias
-  if (warnCount > 0) {
-    insights.push({
-      icon: '⚠️', color: 'var(--warn-text)', bg: 'var(--warn-bg)', border: 'var(--warn-border)',
-      value: `${warnCount} ${warnCount === 1 ? 'punto' : 'puntos'}`,
-      label: 'requieren atención'
-    });
-  } else if (data.length > 0) {
-    insights.push({
-      icon: '✓', color: 'var(--g1)', bg: 'var(--g4)', border: 'var(--border)',
-      value: 'Todo en orden',
-      label: 'sin incidencias en el periodo'
-    });
-  }
-
   if (!insights.length) { section.style.display = 'none'; return; }
   section.style.display = 'block';
   grid.innerHTML = insights.map(ins => `
@@ -1036,14 +1034,14 @@ function renderPunto() {
     if (!sorted.length) { container.innerHTML = '<div class="empty">Sin datos para este periodo</div>'; return; }
     const maxV = sorted[0].total || 1;
     container.innerHTML = sorted.map((p, i) => `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:.5px solid var(--border);">
-        <span style="font-size:11px;color:var(--muted);width:18px;text-align:right;flex-shrink:0;">${i+1}</span>
-        <span style="font-size:12px;font-weight:600;color:var(--text);width:180px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${p.loc}">${p.loc}</span>
-        <div style="flex:1;height:10px;background:var(--g4);border-radius:5px;overflow:hidden;">
-          <div style="height:100%;width:${Math.round(p.total/maxV*100)}%;background:var(--g1);border-radius:5px;"></div>
+      <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:.5px solid var(--border);">
+        <span style="font-size:11px;color:var(--muted);width:16px;text-align:right;flex-shrink:0;">${i+1}</span>
+        <span style="font-size:12px;font-weight:600;color:var(--text);width:160px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${p.loc}">${p.loc}</span>
+        <div style="flex:1;height:8px;background:var(--g4);border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${Math.round(p.total/maxV*100)}%;background:var(--g1);border-radius:4px;"></div>
         </div>
-        <span style="font-size:12px;font-weight:700;color:var(--g1);width:70px;text-align:right;flex-shrink:0;">${fmtNum(p.total)} kg</span>
-        ${p.warn > 0 ? `<span style="font-size:10px;background:var(--warn-bg);color:var(--warn-text);border:1px solid var(--warn-border);padding:2px 7px;border-radius:20px;flex-shrink:0;">⚠️ ${p.warn}</span>` : '<span style="width:44px;flex-shrink:0;"></span>'}
+        <span style="font-size:12px;font-weight:700;color:var(--g1);width:75px;text-align:right;flex-shrink:0;">${fmtNum(p.total)} kg</span>
+        ${p.warn > 0 ? `<span style="font-size:10px;background:var(--warn-bg);color:var(--warn-text);border:1px solid var(--warn-border);padding:1px 7px;border-radius:20px;flex-shrink:0;">⚠️ ${p.warn}</span>` : '<span style="width:44px;flex-shrink:0;"></span>'}
       </div>`).join('');
   } else {
     // Detalle del punto seleccionado: materiales + historial por mes
