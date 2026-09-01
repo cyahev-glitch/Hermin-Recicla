@@ -556,13 +556,8 @@ async function loadRecords() {
     loc: NAME_FIX[r.loc] || r.loc
   }));
 
-  lastLoadTime = Date.now();
-  clearInterval(window._tsInterval);
-  window._tsInterval = setInterval(updateTimestamp, 60000);
-
   renderDash();
   renderRecords();
-  renderExec();
   populateContainerList();
   populatePuntoList();
   populateMonthSelector();
@@ -716,26 +711,6 @@ function fmtNum(n) {
   return val.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Timestamp relativo
-let lastLoadTime = null;
-function updateTimestamp() {
-  // exec-sub removed from header, no-op
-}
-
-// Animación de número contando hacia arriba
-function animateNumber(el, target, decimals) {
-  const duration = 500;
-  const startTime = performance.now();
-  function step(now) {
-    const p = Math.min((now - startTime) / duration, 1);
-    const ease = 1 - Math.pow(1 - p, 3);
-    const curr = target * ease;
-    el.textContent = curr.toLocaleString('es-MX', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-    if (p < 1) requestAnimationFrame(step);
-  }
-  requestAnimationFrame(step);
-}
-
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
@@ -860,7 +835,6 @@ function renderDash() {
   ).join('');
 
   renderPunto();
-  renderInsights(data, total, warnCount);
 
   // Tabla ordenada por fecha ascendente
   const sorted = [...data].sort((a,b) => a.date.localeCompare(b.date));
@@ -885,97 +859,6 @@ function renderDash() {
   document.getElementById('visits-body').innerHTML = html || '<tr><td colspan="8" class="empty">Sin registros para este periodo</td></tr>';
 }
 
-function renderInsights(data, total, warnCount) {
-  const section = document.getElementById('insights-section');
-  const grid = document.getElementById('insights-grid');
-  const monthOrder = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const insights = [];
-
-  if (selectedMonth !== 'all') {
-    // vs mes anterior
-    const idx = monthOrder.indexOf(selectedMonth);
-    if (idx > 0) {
-      const prevMonth = monthOrder[idx - 1];
-      const prevData = records.filter(r => r.month === prevMonth);
-      const prevTotal = prevData.reduce((a,r) => a+(r.emp||0)+(r.sob||0)+(r.lat||0), 0);
-      if (prevTotal > 0 && total > 0) {
-        const diff = ((total - prevTotal) / prevTotal * 100);
-        const up = diff >= 0;
-        insights.push({
-          icon: up ? '↑' : '↓',
-          color: up ? 'var(--g1)' : 'var(--warn-text)',
-          bg: up ? 'var(--g4)' : 'var(--warn-bg)',
-          border: up ? 'var(--border)' : 'var(--warn-border)',
-          value: `${up?'+':''}${diff.toFixed(1)}%`,
-          label: `vs. ${MONTH_NAMES[prevMonth]?.split(' ')[0] || prevMonth}`
-        });
-      }
-      // Punto que más creció
-      const puntos = [...new Set(records.map(r => r.loc))];
-      let bestLoc = null, bestDiff = -Infinity;
-      puntos.forEach(loc => {
-        const curr = data.filter(r=>r.loc===loc).reduce((a,r)=>a+(r.emp||0)+(r.sob||0)+(r.lat||0),0);
-        const prev = prevData.filter(r=>r.loc===loc).reduce((a,r)=>a+(r.emp||0)+(r.sob||0)+(r.lat||0),0);
-        if (prev > 0 && curr > 0) {
-          const d = (curr - prev) / prev * 100;
-          if (d > bestDiff) { bestDiff = d; bestLoc = loc; }
-        }
-      });
-      if (bestLoc && bestDiff > 0) {
-        insights.push({
-          icon: '⭐',
-          color: 'var(--g1)', bg: 'var(--g4)', border: 'var(--border)',
-          value: bestLoc.length > 20 ? bestLoc.slice(0, 18) + '…' : bestLoc,
-          label: `+${bestDiff.toFixed(0)}% más que el mes anterior`
-        });
-      }
-    }
-  } else {
-    // Vista general: mes con más recolección
-    const mT = monthOrder
-      .filter(m => records.some(r => r.month === m))
-      .map(m => ({m, v: records.filter(r=>r.month===m).reduce((a,r)=>a+(r.emp||0)+(r.sob||0)+(r.lat||0),0)}));
-    if (mT.length >= 2) {
-      const best = mT.reduce((a,b) => b.v > a.v ? b : a);
-      insights.push({
-        icon: '🏆', color: 'var(--g1)', bg: 'var(--g4)', border: 'var(--border)',
-        value: MONTH_NAMES[best.m]?.split(' ')[0] || best.m,
-        label: `mejor mes · ${fmtNum(best.v)} kg`
-      });
-      // Promedio mensual
-      const avg = mT.reduce((a,b)=>a+b.v,0) / mT.length;
-      insights.push({
-        icon: '≈', color: 'var(--g1)', bg: 'var(--g4)', border: 'var(--border)',
-        value: `${fmtNum(avg)} kg`,
-        label: 'promedio mensual'
-      });
-      // Tendencia últimos 2 meses
-      if (mT.length >= 2) {
-        const last = mT[mT.length-1], prev2 = mT[mT.length-2];
-        const d = ((last.v - prev2.v) / prev2.v * 100);
-        const up = d >= 0;
-        insights.push({
-          icon: up ? '↑' : '↓',
-          color: up ? 'var(--g1)' : 'var(--warn-text)',
-          bg: up ? 'var(--g4)' : 'var(--warn-bg)',
-          border: up ? 'var(--border)' : 'var(--warn-border)',
-          value: `${up?'+':''}${d.toFixed(1)}%`,
-          label: `tendencia reciente (${MONTH_NAMES[prev2.m]?.split(' ')[0]} → ${MONTH_NAMES[last.m]?.split(' ')[0]})`
-        });
-      }
-    }
-  }
-
-  if (!insights.length) { section.style.display = 'none'; return; }
-  section.style.display = 'block';
-  grid.innerHTML = insights.map(ins => `
-    <div style="background:${ins.bg};border:1px solid ${ins.border};border-radius:10px;padding:12px 16px;flex:1;min-width:140px;">
-      <div style="font-size:18px;font-weight:800;color:${ins.color};display:flex;align-items:center;gap:6px;">
-        <span>${ins.icon}</span><span>${ins.value}</span>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:3px;">${ins.label}</div>
-    </div>`).join('');
-}
 
 function renderPunto() {
   const m = document.getElementById('sel-month').value;
