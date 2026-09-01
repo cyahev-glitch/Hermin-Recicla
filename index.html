@@ -113,8 +113,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
 /* PILLS */
 .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;cursor:default;}
-.pill-ok{background:var(--g4);color:var(--g1);}
-.pill-warn{background:var(--warn-bg);color:var(--warn-text);cursor:pointer;border:1px solid var(--warn-border);}
+.pill-ok{background:var(--g4);color:var(--g1);display:inline-flex;align-items:center;gap:4px;}
+.pill-warn{background:var(--warn-bg);color:var(--warn-text);cursor:pointer;border:1px solid var(--warn-border);display:inline-flex;align-items:center;gap:4px;}
 .pill-warn:hover{background:#fef3c7;}
 .tag-sm{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600;background:#fff3cd;color:#7c5c00;border:1px solid #f59e0b33;margin:1px 2px 1px 0;}
 
@@ -281,58 +281,82 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
   <!-- DASHBOARD -->
   <div class="view active" id="view-dashboard">
-    <div class="dash-controls">
-      <span class="client-name">Purina · Programa de reciclaje</span>
-      <label>Mes:</label>
-      <select id="sel-month" onchange="renderDash()">
+
+    <!-- CONTROLS -->
+    <div class="dash-controls" style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
+      <span style="font-size:18px;font-weight:800;color:var(--g1);margin-right:auto;">Purina · Programa de reciclaje</span>
+      <label style="font-size:12px;color:var(--muted);font-weight:600;">Mes:</label>
+      <select id="sel-month" onchange="renderDash()" style="padding:7px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:var(--font);font-size:13px;color:var(--text);background:#fff;outline:none;">
         <option value="all">Todos los meses</option>
       </select>
+      <button onclick="exportExcel()" class="export-btn">⬇️ Excel</button>
     </div>
 
-    <!-- KPIs: solo total y atención -->
+    <!-- KPIs CON ÍCONO Y TENDENCIA -->
     <div class="kpi-grid">
-      <div class="kpi"><div class="kpi-label">Total recolectado</div><div class="kpi-value" id="k-total">—</div><div class="kpi-unit">kg acumulados</div></div>
-      <div class="kpi warn"><div class="kpi-label">⚠️ Atención requerida</div><div class="kpi-value warn" id="k-warn">—</div><div class="kpi-unit">visitas con incidencia</div></div>
+      <div class="kpi">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:42px;height:42px;border-radius:10px;background:var(--g4);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">♻️</div>
+          <div>
+            <div class="kpi-label">Total recolectado</div>
+            <div class="kpi-value" id="k-total">—</div>
+            <div class="kpi-unit">kg acumulados</div>
+            <div id="k-trend" style="font-size:11px;margin-top:4px;display:none;font-weight:700;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="kpi warn">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:42px;height:42px;border-radius:10px;background:var(--warn-bg);border:1px solid var(--warn-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;">⚠️</div>
+          <div>
+            <div class="kpi-label">Atención requerida</div>
+            <div class="kpi-value warn" id="k-warn">—</div>
+            <div class="kpi-unit">visitas con incidencia</div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Por material y por mes -->
+    <!-- GRÁFICAS -->
     <div class="charts-row">
-      <div class="chart-card"><div class="chart-title">Por material</div><div class="bar-chart" id="bar-mat"></div></div>
-      <div class="chart-card"><div class="chart-title">Por mes</div><div class="bar-chart" id="bar-month"></div></div>
+      <div class="chart-card">
+        <div class="chart-title">Por material</div>
+        <div class="bar-chart" id="bar-mat"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Por mes</div>
+        <div class="bar-chart" id="bar-month"></div>
+      </div>
     </div>
 
-    <!-- Filtro por punto -->
-    <div class="punto-card" style="margin-bottom:14px;">
+    <!-- POR PUNTO Chart.js -->
+    <div class="chart-card" style="margin-bottom:14px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-        <div class="section-title" style="margin:0">Por punto de recolección</div>
-        <select id="sel-punto" onchange="renderPunto()" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:12px;color:var(--text);background:#fff;flex:1;min-width:180px;">
+        <div class="chart-title" style="margin:0;">Por punto de recolección</div>
+        <select id="sel-punto" onchange="renderPunto()" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:12px;color:var(--text);background:#fff;flex:1;min-width:180px;max-width:300px;">
           <option value="all">Todos los puntos</option>
         </select>
       </div>
-      <div style="position:relative;width:100%;max-height:300px;">
-        <canvas id="chart-punto" style="max-height:280px;"></canvas>
+      <div style="overflow-x:auto;width:100%;">
+        <div id="chart-punto-wrap" style="position:relative;min-width:100%;">
+          <canvas id="chart-punto" style="max-height:280px;"></canvas>
+        </div>
       </div>
     </div>
 
-    <!-- Tabla de visitas -->
+    <!-- TABLA -->
     <div class="tbl-card">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-        <div class="section-title" style="margin:0">Visitas por contenedor</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          
-          <button onclick="exportExcel()" class="export-btn">⬇️ Descargar Excel</button>
-        </div>
-      </div>
-      <div class="tbl-search">
-        <div class="search-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="search-input" placeholder="Buscar contenedor..." oninput="renderDash()">
+        <div class="section-title" style="margin:0;">Visitas por contenedor</div>
+        <div style="position:relative;max-width:240px;">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;">🔍</span>
+          <input type="text" id="search-input" placeholder="Buscar contenedor..." oninput="renderDash()" style="width:100%;padding:7px 10px 7px 32px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--font);font-size:12px;color:var(--text);background:#fff;outline:none;">
         </div>
       </div>
       <div class="tbl-wrap">
         <table class="tbl">
           <thead><tr><th>Contenedor</th><th>Fecha</th><th>Costales kg</th><th>Sobres kg</th><th>Latas kg</th><th>Total kg</th><th>Estado</th><th>Evidencias</th></tr></thead>
-          <tbody id="visits-body"><tr><td colspan="7" class="loading">Cargando datos...</td></tr></tbody>
+          <tbody id="visits-body"><tr><td colspan="8" class="loading">Cargando datos...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -495,6 +519,8 @@ let puntoChart = null;
 
 document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
 
+let selectedMonth = 'all'; // kept for renderInsights compat but unused by getFiltered
+
 function populateMonthSelector() {
   const monthOrder = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const present = [...new Set(records.map(r => r.month))].sort((a,b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
@@ -502,6 +528,29 @@ function populateMonthSelector() {
   const prev = sel.value;
   sel.innerHTML = '<option value="all">Todos los meses</option>' +
     present.map(m => `<option value="${m}"${m===prev?' selected':''}>${MONTH_NAMES[m]||m}</option>`).join('');
+}
+
+function renderExec() {
+  const allData = records;
+  const total = allData.reduce((a,r) => a+(r.emp||0)+(r.sob||0)+(r.lat||0), 0);
+  const visits = allData.length;
+  const warn = allData.filter(r => r.status === 'warn').length;
+  document.getElementById('exec-total').textContent = fmtNum(total);
+  document.getElementById('exec-visits').textContent = visits;
+  const warnEl = document.getElementById('exec-warn');
+  warnEl.textContent = warn;
+  warnEl.style.color = warn > 0 ? '#fcd34d' : 'var(--g2)';
+  const monthOrder = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const months = [...new Set(records.map(r => r.month))].sort((a,b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
+  const maxT = months.reduce((mx, m) => {
+    const v = records.filter(r=>r.month===m).reduce((a,r)=>a+(r.emp||0)+(r.sob||0)+(r.lat||0),0);
+    return Math.max(mx, v);
+  }, 0) || 1;
+  document.getElementById('exec-bar1').style.width = Math.round(total/Math.max(total,1)*100)+'%';
+  document.getElementById('exec-bar2').style.width = Math.min(100, Math.round(visits/50*100))+'%';
+  document.getElementById('exec-bar3').style.width = warn>0 ? Math.min(100, Math.round(warn/visits*100*3))+'%' : '0%';
+  const monthCount = months.length;
+  // exec-sub removed
 }
 
 // ---- SUPABASE ----
@@ -525,8 +574,14 @@ async function loadRecords() {
     ...r,
     loc: NAME_FIX[r.loc] || r.loc
   }));
+
+  lastLoadTime = Date.now();
+  clearInterval(window._tsInterval);
+  window._tsInterval = setInterval(updateTimestamp, 60000);
+
   renderDash();
   renderRecords();
+  renderExec();
   populateContainerList();
   populatePuntoList();
   populateMonthSelector();
@@ -675,7 +730,30 @@ function selectStatus(s) {
 }
 function toggleTag(el) { el.classList.toggle('selected'); }
 function fmtDate(d) { const p = d.split('-'); return `${p[2]}/${p[1]}/${p[0].substring(2)}`; }
-function fmtNum(n) { return (Math.round(n * 100) / 100).toFixed(2); }
+function fmtNum(n) {
+  const val = Math.round(n * 100) / 100;
+  return val.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Timestamp relativo
+let lastLoadTime = null;
+function updateTimestamp() {
+  // exec-sub removed from header, no-op
+}
+
+// Animación de número contando hacia arriba
+function animateNumber(el, target, decimals) {
+  const duration = 500;
+  const startTime = performance.now();
+  function step(now) {
+    const p = Math.min((now - startTime) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    const curr = target * ease;
+    el.textContent = curr.toLocaleString('es-MX', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
 
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -746,16 +824,50 @@ function renderDash() {
   const sob = data.reduce((a,r) => a+(r.sob||0), 0);
   const lat = data.reduce((a,r) => a+(r.lat||0), 0);
   const total = emp+sob+lat;
+  const warnCount = data.filter(r => r.status === 'warn').length;
+
   document.getElementById('k-total').textContent = fmtNum(total);
-  document.getElementById('k-warn').textContent = data.filter(r => r.status === 'warn').length;
+  document.getElementById('k-warn').textContent = warnCount;
+  document.getElementById('k-warn').style.color = warnCount > 0 ? 'var(--warn-text)' : 'var(--g1)';
+
+  // Tendencia vs mes anterior
+  const trendEl = document.getElementById('k-trend');
+  const selMonth = document.getElementById('sel-month').value;
+  if (selMonth !== 'all') {
+    const monthOrder0 = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const idx0 = monthOrder0.indexOf(selMonth);
+    if (idx0 > 0) {
+      const prevTotal = records.filter(r => r.month === monthOrder0[idx0-1]).reduce((a,r) => a+(r.emp||0)+(r.sob||0)+(r.lat||0), 0);
+      if (prevTotal > 0) {
+        const diff = ((total - prevTotal) / prevTotal * 100).toFixed(1);
+        trendEl.textContent = `${diff >= 0 ? '↑' : '↓'} ${diff >= 0 ? '+' : ''}${diff}% vs. mes anterior`;
+        trendEl.style.color = diff >= 0 ? 'var(--g2)' : 'var(--warn-text)';
+        trendEl.style.display = 'block';
+      } else { trendEl.style.display = 'none'; }
+    } else { trendEl.style.display = 'none'; }
+  } else { trendEl.style.display = 'none'; }
 
   // Por material
   const maxMat = Math.max(emp,sob,lat) || 1;
+  const matTotal = emp + sob + lat || 1;
   document.getElementById('bar-mat').innerHTML = [
-    {l:'Costales / Empaques',v:emp,c:'#0C6442'},
+    {l:'Costales',v:emp,c:'#0C6442'},
     {l:'Sobres',v:sob,c:'#19D78E'},
     {l:'Latas',v:lat,c:'#9aefd5'}
-  ].map(m => `<div class="bar-row"><span class="bar-label">${m.l}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(m.v/maxMat*100)}%;background:${m.c}"></div></div><span class="bar-val">${fmtNum(m.v)} kg</span></div>`).join('');
+  ].map(m => {
+    const pct = Math.round(m.v/matTotal*100);
+    const showPctInside = pct >= 15;
+    return `<div class="bar-row">
+      <span class="bar-label">${m.l}</span>
+      <div class="bar-track" style="position:relative;">
+        <div class="bar-fill" style="width:${Math.round(m.v/maxMat*100)}%;background:${m.c};display:flex;align-items:center;justify-content:flex-end;padding-right:5px;">
+          ${showPctInside ? `<span style="font-size:10px;font-weight:700;color:${m.c==='#9aefd5'?'#0C6442':'#fff'};white-space:nowrap;">${pct}%</span>` : ''}
+        </div>
+        ${!showPctInside ? `<span style="position:absolute;left:calc(${Math.round(m.v/maxMat*100)}% + 5px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--muted);">${pct}%</span>` : ''}
+      </div>
+      <span class="bar-val">${fmtNum(m.v)} kg</span>
+    </div>`;
+  }).join('');
 
   // Por mes — solo meses con datos
   const monthOrder = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -767,145 +879,190 @@ function renderDash() {
   ).join('');
 
   renderPunto();
+  renderInsights(data, total, warnCount);
 
   // Tabla ordenada por fecha ascendente
   const sorted = [...data].sort((a,b) => a.date.localeCompare(b.date));
   let html = '';
   sorted.forEach((r,i) => {
-    const total = ((r.emp||0)+(r.sob||0)+(r.lat||0));
+    const tot = ((r.emp||0)+(r.sob||0)+(r.lat||0));
     const statusCell = r.status === 'warn'
-      ? `<span class="pill pill-warn" onclick="toggleExpand(${i})" title="Clic para ver detalle">⚠️ Atención requerida ▾</span>`
-      : `<span class="pill pill-ok">✅ Sin novedad</span>`;
+      ? `<span class="pill pill-warn" onclick="toggleExpand(${i})" title="Clic para ver detalle">▲ Atención ▾</span>`
+      : `<span class="pill pill-ok">✓ Sin novedad</span>`;
     const driveCell = r.drive_url === 'pendiente'
-      ? '<span style="display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fcd34d;">📎 Pendiente</span>'
+      ? '<span style="display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fcd34d;">📎 Evidencia pendiente</span>'
       : r.drive_url
         ? `<a href="${r.drive_url}" target="_blank" class="drive-btn" style="padding:3px 8px;font-size:11px">📁 Ver</a>`
         : '<span style="color:var(--muted);font-size:11px">—</span>';
-    html += `<tr><td style="font-weight:600">${r.loc}</td><td style="color:var(--muted);white-space:nowrap">${fmtDate(r.date)}</td><td>${r.emp>0?fmtNum(r.emp):'—'}</td><td>${r.sob>0?fmtNum(r.sob):'—'}</td><td>${r.lat>0?fmtNum(r.lat):'—'}</td><td style="font-weight:700;color:var(--g1)">${fmtNum(total)}</td><td>${statusCell}</td><td>${driveCell}</td></tr>`;
+    html += `<tr><td style="font-weight:600">${r.loc}</td><td style="color:var(--muted);white-space:nowrap">${fmtDate(r.date)}</td><td>${r.emp>0?fmtNum(r.emp):'—'}</td><td>${r.sob>0?fmtNum(r.sob):'—'}</td><td>${r.lat>0?fmtNum(r.lat):'—'}</td><td style="font-weight:700;color:var(--g1)">${fmtNum(tot)}</td><td>${statusCell}</td><td>${driveCell}</td></tr>`;
     if (r.status === 'warn') {
       const tagArr = Array.isArray(r.tags) ? r.tags : [];
       const tags = tagArr.map(t => `<span class="tag-sm">${t}</span>`).join('');
       html += `<tr class="expand-row"><td colspan="8"><div class="expand-inner" id="inner-${i}"><div class="expand-content"><div>${tags}</div><div class="expand-obs">${r.obs||'Sin observación registrada.'}</div></div></div></td></tr>`;
     }
   });
-  document.getElementById('visits-body').innerHTML = html || '<tr><td colspan="7" class="empty">Sin registros para este periodo</td></tr>';
+  document.getElementById('visits-body').innerHTML = html || '<tr><td colspan="8" class="empty">Sin registros para este periodo</td></tr>';
+}
+
+function renderInsights(data, total, warnCount) {
+  const section = document.getElementById('insights-section');
+  const grid = document.getElementById('insights-grid');
+  const monthOrder = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const insights = [];
+
+  if (selectedMonth !== 'all') {
+    // vs mes anterior
+    const idx = monthOrder.indexOf(selectedMonth);
+    if (idx > 0) {
+      const prevMonth = monthOrder[idx - 1];
+      const prevData = records.filter(r => r.month === prevMonth);
+      const prevTotal = prevData.reduce((a,r) => a+(r.emp||0)+(r.sob||0)+(r.lat||0), 0);
+      if (prevTotal > 0 && total > 0) {
+        const diff = ((total - prevTotal) / prevTotal * 100);
+        const up = diff >= 0;
+        insights.push({
+          icon: up ? '↑' : '↓',
+          color: up ? 'var(--g1)' : 'var(--warn-text)',
+          bg: up ? 'var(--g4)' : 'var(--warn-bg)',
+          border: up ? 'var(--border)' : 'var(--warn-border)',
+          value: `${up?'+':''}${diff.toFixed(1)}%`,
+          label: `vs. ${MONTH_NAMES[prevMonth]?.split(' ')[0] || prevMonth}`
+        });
+      }
+      // Punto que más creció
+      const puntos = [...new Set(records.map(r => r.loc))];
+      let bestLoc = null, bestDiff = -Infinity;
+      puntos.forEach(loc => {
+        const curr = data.filter(r=>r.loc===loc).reduce((a,r)=>a+(r.emp||0)+(r.sob||0)+(r.lat||0),0);
+        const prev = prevData.filter(r=>r.loc===loc).reduce((a,r)=>a+(r.emp||0)+(r.sob||0)+(r.lat||0),0);
+        if (prev > 0 && curr > 0) {
+          const d = (curr - prev) / prev * 100;
+          if (d > bestDiff) { bestDiff = d; bestLoc = loc; }
+        }
+      });
+      if (bestLoc && bestDiff > 0) {
+        insights.push({
+          icon: '⭐',
+          color: 'var(--g1)', bg: 'var(--g4)', border: 'var(--border)',
+          value: bestLoc.length > 20 ? bestLoc.slice(0, 18) + '…' : bestLoc,
+          label: `+${bestDiff.toFixed(0)}% más que el mes anterior`
+        });
+      }
+    }
+  } else {
+    // Vista general: mes con más recolección
+    const mT = monthOrder
+      .filter(m => records.some(r => r.month === m))
+      .map(m => ({m, v: records.filter(r=>r.month===m).reduce((a,r)=>a+(r.emp||0)+(r.sob||0)+(r.lat||0),0)}));
+    if (mT.length >= 2) {
+      const best = mT.reduce((a,b) => b.v > a.v ? b : a);
+      insights.push({
+        icon: '🏆', color: 'var(--g1)', bg: 'var(--g4)', border: 'var(--border)',
+        value: MONTH_NAMES[best.m]?.split(' ')[0] || best.m,
+        label: `mejor mes · ${fmtNum(best.v)} kg`
+      });
+      // Promedio mensual
+      const avg = mT.reduce((a,b)=>a+b.v,0) / mT.length;
+      insights.push({
+        icon: '≈', color: 'var(--g1)', bg: 'var(--g4)', border: 'var(--border)',
+        value: `${fmtNum(avg)} kg`,
+        label: 'promedio mensual'
+      });
+      // Tendencia últimos 2 meses
+      if (mT.length >= 2) {
+        const last = mT[mT.length-1], prev2 = mT[mT.length-2];
+        const d = ((last.v - prev2.v) / prev2.v * 100);
+        const up = d >= 0;
+        insights.push({
+          icon: up ? '↑' : '↓',
+          color: up ? 'var(--g1)' : 'var(--warn-text)',
+          bg: up ? 'var(--g4)' : 'var(--warn-bg)',
+          border: up ? 'var(--border)' : 'var(--warn-border)',
+          value: `${up?'+':''}${d.toFixed(1)}%`,
+          label: `tendencia reciente (${MONTH_NAMES[prev2.m]?.split(' ')[0]} → ${MONTH_NAMES[last.m]?.split(' ')[0]})`
+        });
+      }
+    }
+  }
+
+  if (!insights.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  grid.innerHTML = insights.map(ins => `
+    <div style="background:${ins.bg};border:1px solid ${ins.border};border-radius:10px;padding:12px 16px;flex:1;min-width:140px;">
+      <div style="font-size:18px;font-weight:800;color:${ins.color};display:flex;align-items:center;gap:6px;">
+        <span>${ins.icon}</span><span>${ins.value}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">${ins.label}</div>
+    </div>`).join('');
 }
 
 function renderPunto() {
   const m = document.getElementById('sel-month').value;
   const puntoSel = document.getElementById('sel-punto').value;
   let data = m === 'all' ? records : records.filter(r => r.month === m);
-
   let labels, empData, sobData, latData;
 
   if (puntoSel === 'all') {
-    const puntoMap = {};
-    data.forEach(r => {
-      if (!puntoMap[r.loc]) puntoMap[r.loc] = {emp:0, sob:0, lat:0};
-      puntoMap[r.loc].emp += (r.emp||0);
-      puntoMap[r.loc].sob += (r.sob||0);
-      puntoMap[r.loc].lat += (r.lat||0);
-    });
-    const sorted = Object.entries(puntoMap).sort((a,b) => (b[1].emp+b[1].sob+b[1].lat)-(a[1].emp+a[1].sob+a[1].lat));
-    labels = sorted.map(([loc]) => loc);
-    empData = sorted.map(([,v]) => Math.round(v.emp*100)/100);
-    sobData = sorted.map(([,v]) => Math.round(v.sob*100)/100);
-    latData = sorted.map(([,v]) => Math.round(v.lat*100)/100);
+    const pm = {};
+    data.forEach(r => { if(!pm[r.loc]) pm[r.loc]={emp:0,sob:0,lat:0}; pm[r.loc].emp+=r.emp||0; pm[r.loc].sob+=r.sob||0; pm[r.loc].lat+=r.lat||0; });
+    const sorted = Object.entries(pm).sort((a,b)=>(b[1].emp+b[1].sob+b[1].lat)-(a[1].emp+a[1].sob+a[1].lat));
+    labels = sorted.map(([l])=>l);
+    empData = sorted.map(([,v])=>Math.round(v.emp*100)/100);
+    sobData = sorted.map(([,v])=>Math.round(v.sob*100)/100);
+    latData = sorted.map(([,v])=>Math.round(v.lat*100)/100);
   } else {
-    const puntoData = data.filter(r => r.loc === puntoSel);
+    const pd = data.filter(r=>r.loc===puntoSel);
     const monthOrder = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const months = [...new Set(puntoData.map(r => r.month))].sort((a,b) => monthOrder.indexOf(a)-monthOrder.indexOf(b));
-    labels = months.map(m => MONTH_NAMES[m]?.split(' ')[0] || m);
-    empData = months.map(m => Math.round(puntoData.filter(r=>r.month===m).reduce((a,r)=>a+(r.emp||0),0)*100)/100);
-    sobData = months.map(m => Math.round(puntoData.filter(r=>r.month===m).reduce((a,r)=>a+(r.sob||0),0)*100)/100);
-    latData = months.map(m => Math.round(puntoData.filter(r=>r.month===m).reduce((a,r)=>a+(r.lat||0),0)*100)/100);
+    const months = [...new Set(pd.map(r=>r.month))].sort((a,b)=>monthOrder.indexOf(a)-monthOrder.indexOf(b));
+    labels = months.map(m=>MONTH_NAMES[m]?.split(' ')[0]||m);
+    empData = months.map(m=>Math.round(pd.filter(r=>r.month===m).reduce((a,r)=>a+(r.emp||0),0)*100)/100);
+    sobData = months.map(m=>Math.round(pd.filter(r=>r.month===m).reduce((a,r)=>a+(r.sob||0),0)*100)/100);
+    latData = months.map(m=>Math.round(pd.filter(r=>r.month===m).reduce((a,r)=>a+(r.lat||0),0)*100)/100);
   }
 
   if (puntoChart) { puntoChart.destroy(); puntoChart = null; }
+  const canvas = document.getElementById('chart-punto');
+  if (!labels.length) { canvas.style.display='none'; return; }
+  canvas.style.display = 'block';
 
-  if (!labels.length) {
-    document.getElementById('chart-punto').style.display = 'none';
-    return;
+  const wrap = document.getElementById('chart-punto-wrap');
+  if (puntoSel === 'all' && labels.length > 8) {
+    wrap.style.width = (labels.length * 60) + 'px';
+  } else {
+    wrap.style.width = '100%';
   }
-  document.getElementById('chart-punto').style.display = 'block';
 
   if (puntoSel === 'all') {
-    // Barras agrupadas — tamaño controlado, valores visibles en tooltip
-    puntoChart = new Chart(document.getElementById('chart-punto'), {
+    puntoChart = new Chart(canvas, {
       type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          { label: 'Costales / Empaques', data: empData, backgroundColor: '#0C6442', borderRadius: 4 },
-          { label: 'Sobres', data: sobData, backgroundColor: '#19D78E', borderRadius: 4 },
-          { label: 'Latas', data: latData, backgroundColor: '#9aefd5', borderRadius: 4 }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false,
-        plugins: {
-          legend: { position: 'top', labels: { font: { family: "'Nunito Sans', sans-serif", size: 11 }, color: '#5a8a75' } },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)} kg` } }
-        },
-        scales: {
-          x: { ticks: { font: { family: "'Nunito Sans', sans-serif", size: 9 }, color: '#5a8a75', maxRotation: 40 }, grid: { display: false } },
-          y: { ticks: { font: { family: "'Nunito Sans', sans-serif", size: 10 }, color: '#5a8a75', callback: v => v + ' kg' }, grid: { color: '#e8f8f1' } }
-        }
-      }
+      data: { labels, datasets: [
+        { label:'Costales / Empaques', data:empData, backgroundColor:'#0C6442', borderRadius:4 },
+        { label:'Sobres', data:sobData, backgroundColor:'#19D78E', borderRadius:4 },
+        { label:'Latas', data:latData, backgroundColor:'#9aefd5', borderRadius:4 }
+      ]},
+      options: { responsive:true, maintainAspectRatio:false, animation:false,
+        plugins:{ legend:{position:'top',labels:{font:{family:"'Nunito Sans',sans-serif",size:11},color:'#5a8a75'}},
+          tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)} kg`}} },
+        scales:{ x:{ticks:{font:{family:"'Nunito Sans',sans-serif",size:9},color:'#5a8a75',maxRotation:40},grid:{display:false}},
+          y:{ticks:{font:{family:"'Nunito Sans',sans-serif",size:10},color:'#5a8a75',callback:v=>v+' kg'},grid:{color:'#e8f8f1'}} } }
     });
   } else {
-    // Pastel — muestra los valores directamente en el centro
-    const totalEmp = empData.reduce((a,b)=>a+b,0);
-    const totalSob = sobData.reduce((a,b)=>a+b,0);
-    const totalLat = latData.reduce((a,b)=>a+b,0);
-    const grandTotal = totalEmp + totalSob + totalLat;
-    puntoChart = new Chart(document.getElementById('chart-punto'), {
+    const tE=empData.reduce((a,b)=>a+b,0), tS=sobData.reduce((a,b)=>a+b,0), tL=latData.reduce((a,b)=>a+b,0);
+    const grand=tE+tS+tL;
+    puntoChart = new Chart(canvas, {
       type: 'doughnut',
-      data: {
-        labels: ['Costales / Empaques', 'Sobres', 'Latas'],
-        datasets: [{
-          data: [
-            Math.round(totalEmp*100)/100,
-            Math.round(totalSob*100)/100,
-            Math.round(totalLat*100)/100
-          ],
-          backgroundColor: ['#0C6442','#19D78E','#9aefd5'],
-          borderColor: '#fff',
-          borderWidth: 3,
-          hoverOffset: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '58%',
-        plugins: {
-          legend: {
-            position: 'right',
-            labels: {
-              font: { family: "'Nunito Sans', sans-serif", size: 11 },
-              color: '#5a8a75',
-              padding: 12,
-              generateLabels: chart => {
-                const ds = chart.data.datasets[0];
-                return chart.data.labels.map((label, i) => ({
-                  text: `${label}: ${ds.data[i].toFixed(2)} kg (${grandTotal>0?((ds.data[i]/grandTotal)*100).toFixed(1):0}%)`,
-                  fillStyle: ds.backgroundColor[i],
-                  hidden: false,
-                  index: i
-                }));
-              }
-            }
-          },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.raw.toFixed(2)} kg (${grandTotal>0?((ctx.raw/grandTotal)*100).toFixed(1):0}%)` } }
-        }
-      }
+      data: { labels:['Costales / Empaques','Sobres','Latas'],
+        datasets:[{data:[Math.round(tE*100)/100,Math.round(tS*100)/100,Math.round(tL*100)/100],
+          backgroundColor:['#0C6442','#19D78E','#9aefd5'],borderColor:'#fff',borderWidth:3,hoverOffset:6}] },
+      options: { responsive:true, maintainAspectRatio:false, cutout:'58%',
+        plugins:{ legend:{ position:'right', labels:{ font:{family:"'Nunito Sans',sans-serif",size:11}, color:'#5a8a75', padding:12,
+          generateLabels: chart => { const ds=chart.data.datasets[0]; return chart.data.labels.map((label,i)=>({
+            text:`${label}: ${ds.data[i].toFixed(2)} kg (${grand>0?((ds.data[i]/grand)*100).toFixed(1):0}%)`,
+            fillStyle:ds.backgroundColor[i], hidden:false, index:i })); } } },
+          tooltip:{callbacks:{label:ctx=>` ${ctx.raw.toFixed(2)} kg (${grand>0?((ctx.raw/grand)*100).toFixed(1):0}%)`}} } }
     });
   }
 }
-
 // ---- REGISTROS ----
 function renderRecords() {
   const m = document.getElementById('rec-filter-month').value;
@@ -917,9 +1074,9 @@ function renderRecords() {
   }
   document.getElementById('rec-body').innerHTML = data.map(r => {
     const total = ((r.emp||0)+(r.sob||0)+(r.lat||0));
-    const pill = r.status==='warn' ? '<span class="pill pill-warn">⚠️ Atención</span>' : '<span class="pill pill-ok">✅ Sin novedad</span>';
+    const pill = r.status==='warn' ? '<span class="pill pill-warn">▲ Atención</span>' : '<span class="pill pill-ok">✓ Sin novedad</span>';
     const driveLink = r.drive_url === 'pendiente'
-      ? '<span style="display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fcd34d;">📎 Pendiente</span>'
+      ? '<span style="display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#fffbeb;color:#92400e;border:1px solid #fcd34d;">📎 Evidencia pendiente</span>'
       : r.drive_url
         ? `<a href="${r.drive_url}" target="_blank" class="drive-btn" style="padding:3px 8px;font-size:11px">📁 Ver</a>`
         : '—';
