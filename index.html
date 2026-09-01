@@ -531,26 +531,7 @@ function populateMonthSelector() {
 }
 
 function renderExec() {
-  const allData = records;
-  const total = allData.reduce((a,r) => a+(r.emp||0)+(r.sob||0)+(r.lat||0), 0);
-  const visits = allData.length;
-  const warn = allData.filter(r => r.status === 'warn').length;
-  document.getElementById('exec-total').textContent = fmtNum(total);
-  document.getElementById('exec-visits').textContent = visits;
-  const warnEl = document.getElementById('exec-warn');
-  warnEl.textContent = warn;
-  warnEl.style.color = warn > 0 ? '#fcd34d' : 'var(--g2)';
-  const monthOrder = ['Ene','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const months = [...new Set(records.map(r => r.month))].sort((a,b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
-  const maxT = months.reduce((mx, m) => {
-    const v = records.filter(r=>r.month===m).reduce((a,r)=>a+(r.emp||0)+(r.sob||0)+(r.lat||0),0);
-    return Math.max(mx, v);
-  }, 0) || 1;
-  document.getElementById('exec-bar1').style.width = Math.round(total/Math.max(total,1)*100)+'%';
-  document.getElementById('exec-bar2').style.width = Math.min(100, Math.round(visits/50*100))+'%';
-  document.getElementById('exec-bar3').style.width = warn>0 ? Math.min(100, Math.round(warn/visits*100*3))+'%' : '0%';
-  const monthCount = months.length;
-  // exec-sub removed
+  // v2 — no exec summary block, no-op
 }
 
 // ---- SUPABASE ----
